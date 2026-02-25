@@ -64,10 +64,20 @@ CREATE TABLE modules (
     id_formateur INT NOT NULL,
     FOREIGN KEY (id_formation) REFERENCES formations(id_formation)
         ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+-- MODULE_FORMATEUR (Many-to-Many between Modules and Formateurs)
+CREATE TABLE module_formateur (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_module INT NOT NULL,
+    id_formateur INT NOT NULL,
+    FOREIGN KEY (id_module) REFERENCES modules(id_module)
+        ON DELETE CASCADE
         ON UPDATE CASCADE,
     FOREIGN KEY (id_formateur) REFERENCES users(id_user)
         ON DELETE CASCADE
-        ON UPDATE CASCADE
+        ON UPDATE CASCADE,
 );
 
 -- EMPLOI DU TEMPS
