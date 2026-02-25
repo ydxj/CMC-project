@@ -34,8 +34,8 @@ CREATE TABLE salles (
         ON UPDATE CASCADE
 );
 
--- FORMATIONS
-CREATE TABLE formations (
+-- FILIER
+CREATE TABLE filier (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom_formation VARCHAR(150) NOT NULL,
     id_pole INT NOT NULL,
@@ -49,8 +49,10 @@ CREATE TABLE groupes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom_groupe VARCHAR(100) NOT NULL,
     annee VARCHAR(20) NOT NULL,
+    niveau ENUM('TS','T','Q','S','FQ','BP','PC') NOT NULL,
+    crenau ENUM('CDJ','CDS') default 'CDJ' NOT NULL,
     id_formation INT NOT NULL,
-    FOREIGN KEY (id_formation) REFERENCES formations(id)
+    FOREIGN KEY (id_formation) REFERENCES filier(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
@@ -62,7 +64,7 @@ CREATE TABLE modules (
     volume_horaire INT NOT NULL,
     id_formation INT NOT NULL,
     id_formateur INT NOT NULL,
-    FOREIGN KEY (id_formation) REFERENCES formations(id)
+    FOREIGN KEY (id_formation) REFERENCES filier(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
