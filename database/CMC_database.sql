@@ -37,7 +37,7 @@ CREATE TABLE salles (
 -- FILIER
 CREATE TABLE filier (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nom_formation VARCHAR(150) NOT NULL,
+    nom_filier VARCHAR(150) NOT NULL,
     id_pole INT NOT NULL,
     FOREIGN KEY (id_pole) REFERENCES poles(id)
         ON DELETE CASCADE
@@ -51,8 +51,8 @@ CREATE TABLE groupes (
     annee VARCHAR(20) NOT NULL,
     niveau ENUM('TS','T','Q','S','FQ','BP','PC') NOT NULL,
     crenau ENUM('CDJ','CDS') default 'CDJ' NOT NULL,
-    id_formation INT NOT NULL,
-    FOREIGN KEY (id_formation) REFERENCES filier(id)
+    id_filier INT NOT NULL,
+    FOREIGN KEY (id_filier) REFERENCES filier(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
@@ -62,9 +62,8 @@ CREATE TABLE modules (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom_module VARCHAR(150) NOT NULL,
     volume_horaire INT NOT NULL,
-    id_formation INT NOT NULL,
-    id_formateur INT NOT NULL,
-    FOREIGN KEY (id_formation) REFERENCES filier(id)
+    id_filier INT NOT NULL,
+    FOREIGN KEY (id_filier) REFERENCES filier(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
