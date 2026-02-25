@@ -1,0 +1,973 @@
+{
+	"info": {
+		"_postman_id": "fab4fbd9-f72f-4389-88f4-5c892f4ce063",
+		"name": "CMC_project",
+		"description": "CMC project c'est un project pour organisee cmc emploi du temps",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "44458126",
+		"_collection_link": "https://zerhouniomar.postman.co/workspace/Zerhouni-Omar's-Workspace~91c25a39-8935-4f64-880f-5059ea4fbb6d/collection/44458126-fab4fbd9-f72f-4389-88f4-5c892f4ce063?action=share&source=collection_link&creator=44458126"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"user@email.com\",\r\n  \"password\": \"123456\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "login",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"email\": \"user@email.com\",\r\n  \"password\": \"123456\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/auth/login",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "{\r\n  \"success\": true,\r\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\r\n  \"user\": {\r\n    \"id\": 1,\r\n    \"nom\": \"Admin\",\r\n    \"prenom\": \"CMC\",\r\n    \"role\": \"DIRECTEUR\"\r\n  }\r\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "GetAllUser",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "GetAllUser",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/api/users",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"users"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "[\r\n  {\r\n    \"id\": 1,\r\n    \"nom\": \"Admin\",\r\n    \"prenom\": \"CMC\",\r\n    \"email\": \"admin@cmc.com\",\r\n    \"role\": \"DIRECTEUR\"\r\n  },\r\n  {\r\n    \"id\": 2,\r\n    \"nom\": \"Ali\",\r\n    \"prenom\": \"Karim\",\r\n    \"email\": \"ali@cmc.com\",\r\n    \"role\": \"FORMATEUR\"\r\n  }\r\n]"
+						}
+					]
+				},
+				{
+					"name": "CreateNewUser",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreateNewUser",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"nom\": \"Karim\",\r\n  \"prenom\": \"Said\",\r\n  \"email\": \"karim@cmc.com\",\r\n  \"password\": \"123456\",\r\n  \"role\": \"CHEF_POLE\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/users",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"users"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "{\r\n  \"success\": true,\r\n  \"message\": \"User created successfully\"\r\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Poles",
+			"item": [
+				{
+					"name": "GETAllPoles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/poles",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"poles"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "GETAllPoles",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/api/poles",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"poles"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "[\r\n  {\r\n    \"id\": 1,\r\n    \"nom_pole\": \"Digital\",\r\n    \"id_chef\": 3\r\n  }\r\n]"
+						}
+					]
+				},
+				{
+					"name": "CreatePole",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/poles",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"poles"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreatePole",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"nom_pole\": \"Artisanat\",\r\n  \"id_chef\": 5\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/poles",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"poles"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "{\r\n  \"success\": true,\r\n  \"message\": \"Pole created successfully\"\r\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Salles",
+			"item": [
+				{
+					"name": "GETSalles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/salles",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"salles"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "GETSalles",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/api/salles",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"salles"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "[\r\n  {\r\n    \"id\": 1,\r\n    \"nom_salle\": \"Salle A1\",\r\n    \"type_salle\": \"SALLE\",\r\n    \"id_pole\": 1\r\n  }\r\n]"
+						}
+					]
+				},
+				{
+					"name": "CreateSalle",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/salles",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"salles"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreateSalle",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"nom_salle\": \"Atelier 2\",\r\n  \"type_salle\": \"ATELIER\",\r\n  \"id_pole\": 1\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/salles",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"salles"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Filiers",
+			"item": [
+				{
+					"name": "GETFiliers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/filiers",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"filiers"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "GETFiliers",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/api/filiers",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"filiers"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "[\r\n  {\r\n    \"id\": 1,\r\n    \"nom_formation\": \"Développement Digital\",\r\n    \"id_pole\": 1\r\n  }\r\n]"
+						}
+					]
+				},
+				{
+					"name": "CreateFilier",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/filiers",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"filiers"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreateFilier",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"nom_formation\": \"Réseaux Informatique\",\r\n  \"id_pole\": 1\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/filiers",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"filiers"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Groupes",
+			"item": [
+				{
+					"name": "GETGroupes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/groupes",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"groupes"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "GETGroupes",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/api/groupes",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"groupes"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "[\r\n  {\r\n    \"id\": 1,\r\n    \"nom_groupe\": \"DD101\",\r\n    \"annee\": \"2025\",\r\n    \"niveau\": \"TS\",\r\n    \"crenau\": \"CDJ\",\r\n    \"id_formation\": 1\r\n  }\r\n]"
+						}
+					]
+				},
+				{
+					"name": "CreateGroupe",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/groupes",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"groupes"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreateGroupe",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"nom_groupe\": \"RI202\",\r\n  \"annee\": \"2025\",\r\n  \"niveau\": \"T\",\r\n  \"crenau\": \"CDS\",\r\n  \"id_formation\": 1\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/groupes",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"groupes"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Modules",
+			"item": [
+				{
+					"name": "GETModules",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/modules",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"modules"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "GETModules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/api/modules",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"modules"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "[\r\n  {\r\n    \"id\": 1,\r\n    \"nom_module\": \"JavaScript\",\r\n    \"volume_horaire\": 60,\r\n    \"id_formation\": 1\r\n  }\r\n]"
+						}
+					]
+				},
+				{
+					"name": "CreateModule",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/modules",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"modules"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreateModule",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"nom_module\": \"Laravel\",\r\n  \"volume_horaire\": 80,\r\n  \"id_formation\": 1\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/modules",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"modules"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Assign Formateur to Module",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/module-formateur",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"module-formateur"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Assign Formateur to Module",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"id_module\": 1,\r\n  \"id_formateur\": 4\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/module-formateur",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"module-formateur"
+									]
+								}
+							},
+							"_postman_previewlanguage": "",
+							"header": [],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Emploi du Temps",
+			"item": [
+				{
+					"name": "AllSessions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/emploi-du-temps",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"emploi-du-temps"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "CreateSession",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/emploi-du-temps",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"emploi-du-temps"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "CreateSession",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"date_seance\": \"2026-03-10\",\r\n  \"heure_debut\": \"08:30\",\r\n  \"heure_fin\": \"10:30\",\r\n  \"id_groupe\": 1,\r\n  \"id_module\": 1,\r\n  \"id_formateur\": 4,\r\n  \"id_salle\": 2\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/api/emploi-du-temps",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"api",
+										"emploi-du-temps"
+									]
+								}
+							},
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "",
+									"type": "text"
+								}
+							],
+							"cookie": [
+								{
+									"expires": "Invalid Date",
+									"domain": "",
+									"path": ""
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Session created successfully\"\n}"
+						}
+					]
+				}
+			]
+		}
+	]
+}
