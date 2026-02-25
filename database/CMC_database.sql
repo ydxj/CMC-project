@@ -77,7 +77,7 @@ CREATE TABLE module_formateur (
         ON UPDATE CASCADE,
     FOREIGN KEY (id_formateur) REFERENCES users(id_user)
         ON DELETE CASCADE
-        ON UPDATE CASCADE,
+        ON UPDATE CASCADE
 );
 
 -- EMPLOI DU TEMPS
