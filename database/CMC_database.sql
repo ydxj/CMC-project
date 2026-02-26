@@ -38,9 +38,9 @@ CREATE TABLE poles (
 -- formateur_pole (Many-to-Many between formateur and Poles)
 CREATE TABLE formateur_pole (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_user INT NOT NULL,
+    id_formateur INT NOT NULL,
     id_pole INT NOT NULL,
-    FOREIGN KEY (id_user) REFERENCES formateurs(id)
+    FOREIGN KEY (id_formateur) REFERENCES formateurs(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
     FOREIGN KEY (id_pole) REFERENCES poles(id)
@@ -143,3 +143,8 @@ CREATE INDEX idx_module_filiere ON modules(id_filiere);
 ALTER TABLE emploi_du_temps
 ADD CONSTRAINT unique_salle_time
 UNIQUE (date_seance, heure_debut, heure_fin, id_salle);
+
+-- Prevent invalid sessions
+ALTER TABLE emploi_du_temps
+ADD CONSTRAINT chk_time_valid
+CHECK (heure_fin > heure_debut);
