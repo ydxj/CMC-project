@@ -8,9 +8,26 @@ use Illuminate\Http\Request;
 
 class EmploiDuTempsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(EmploiDuTemps::all());
+        $limit = $request->query('limit');
+        $offset = $request->query('offset');
+
+        if ($limit === null && $offset === null) {
+            return response()->json(EmploiDuTemps::all());
+        }
+
+        $query = EmploiDuTemps::query();
+
+        if ($offset !== null) {
+            $query->skip(max(0, (int) $offset));
+        }
+
+        if ($limit !== null) {
+            $query->take(max(0, (int) $limit));
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)

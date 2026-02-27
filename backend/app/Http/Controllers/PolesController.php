@@ -7,9 +7,26 @@ use Illuminate\Http\Request;
 
 class PolesController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Pole::all());
+        $limit = $request->query('limit');
+        $offset = $request->query('offset');
+
+        if ($limit === null && $offset === null) {
+            return response()->json(Pole::all());
+        }
+
+        $query = Pole::query();
+
+        if ($offset !== null) {
+            $query->skip(max(0, (int) $offset));
+        }
+
+        if ($limit !== null) {
+            $query->take(max(0, (int) $limit));
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)

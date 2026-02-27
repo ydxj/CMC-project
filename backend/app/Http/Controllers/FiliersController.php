@@ -7,9 +7,26 @@ use Illuminate\Http\Request;
 
 class FiliersController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Filiere::all());
+        $limit = $request->query('limit');
+        $offset = $request->query('offset');
+
+        if ($limit === null && $offset === null) {
+            return response()->json(Filiere::all());
+        }
+
+        $query = Filiere::query();
+
+        if ($offset !== null) {
+            $query->skip(max(0, (int) $offset));
+        }
+
+        if ($limit !== null) {
+            $query->take(max(0, (int) $limit));
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)

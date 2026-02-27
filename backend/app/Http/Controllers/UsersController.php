@@ -8,11 +8,28 @@ use Illuminate\Support\Facades\Hash;
 
 class UsersController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(
-            User::select('id', 'nom', 'prenom', 'email', 'role')->get()
-        );
+        $limit = $request->query('limit');
+        $offset = $request->query('offset');
+
+        if ($limit === null && $offset === null) {
+            return response()->json(
+                User::select('id', 'nom', 'prenom', 'email', 'role')->get()
+            );
+        }
+
+        $query = User::select('id', 'nom', 'prenom', 'email', 'role');
+
+        if ($offset !== null) {
+            $query->skip(max(0, (int) $offset));
+        }
+
+        if ($limit !== null) {
+            $query->take(max(0, (int) $limit));
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)

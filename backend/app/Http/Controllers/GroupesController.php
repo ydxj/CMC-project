@@ -7,9 +7,26 @@ use Illuminate\Http\Request;
 
 class GroupesController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Groupe::all());
+        $limit = $request->query('limit');
+        $offset = $request->query('offset');
+
+        if ($limit === null && $offset === null) {
+            return response()->json(Groupe::all());
+        }
+
+        $query = Groupe::query();
+
+        if ($offset !== null) {
+            $query->skip(max(0, (int) $offset));
+        }
+
+        if ($limit !== null) {
+            $query->take(max(0, (int) $limit));
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)
