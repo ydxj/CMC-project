@@ -40,12 +40,13 @@ class UsersController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role' => 'required|in:DIRECTEUR,CHEF_POLE,FORMATEUR',
-            'matricule' => 'nullable|string|max:50',
+            'matricule' => 'required|string|max:50',
         ]);
 
         $data['password'] = Hash::make($data['password']);
-
         User::create($data);
+        // var_dump($data);
+        // die();
 
         return response()->json([
             'success' => true,
