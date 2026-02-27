@@ -13,25 +13,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 
-Route::get('/users', [UsersController::class, 'index']);
-Route::post('/users', [UsersController::class, 'store']);
-
-Route::get('/poles', [PolesController::class, 'index']);
-Route::post('/poles', [PolesController::class, 'store']);
-
-Route::get('/salles', [SallesController::class, 'index']);
-Route::post('/salles', [SallesController::class, 'store']);
-
-Route::get('/filiers', [FiliersController::class, 'index']);
-Route::post('/filiers', [FiliersController::class, 'store']);
-
-Route::get('/groupes', [GroupesController::class, 'index']);
-Route::post('/groupes', [GroupesController::class, 'store']);
-
-Route::get('/modules', [ModulesController::class, 'index']);
-Route::post('/modules', [ModulesController::class, 'store']);
+Route::resource('users', UsersController::class);
+Route::resource('poles', PolesController::class);
+Route::resource('salles', SallesController::class);
+Route::resource('filiers', FiliersController::class);
+Route::resource('groupes', GroupesController::class);
+Route::resource('modules', ModulesController::class);
+Route::resource('emploi-du-temps', EmploiDuTempsController::class);
 
 Route::post('/module-formateur', [ModuleFormateurController::class, 'store']);
-
-Route::get('/emploi-du-temps', [EmploiDuTempsController::class, 'index']);
-Route::post('/emploi-du-temps', [EmploiDuTempsController::class, 'store']);
