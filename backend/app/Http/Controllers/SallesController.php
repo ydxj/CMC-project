@@ -24,7 +24,11 @@ class SallesController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Salle created successfully',
+            'data' => [
+                'nom_salle' => $data['nom_salle'],
+                'type_salle' => $data['type_salle'],
+                'id_pole' => $data['id_pole'],
+            ],
         ]);
     }
 }

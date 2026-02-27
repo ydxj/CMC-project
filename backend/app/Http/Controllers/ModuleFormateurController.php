@@ -30,7 +30,11 @@ class ModuleFormateurController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Assignment created successfully',
+            'data' => [
+                'id_module' => $data['id_module'],
+                'id_groupe' => $data['id_groupe'],
+                'id_formateur' => $data['id_formateur'],
+            ],
         ]);
     }
 }

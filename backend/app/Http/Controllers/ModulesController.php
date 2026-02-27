@@ -38,7 +38,11 @@ class ModulesController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Module created successfully',
+            'data' => [
+                'nom_module' => $data['nom_module'],
+                'volume_horaire' => $data['volume_horaire'],
+                'id_filiere' => $idFiliere,
+            ],
         ]);
     }
 }

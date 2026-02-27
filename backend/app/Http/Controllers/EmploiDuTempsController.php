@@ -41,7 +41,15 @@ class EmploiDuTempsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Session created successfully',
+            'data' => [
+                'date_seance' => $data['date_seance'],
+                'heure_debut' => $data['heure_debut'],
+                'heure_fin' => $data['heure_fin'],
+                'id_groupe' => $data['id_groupe'],
+                'id_module' => $data['id_module'],
+                'id_formateur' => $data['id_formateur'],
+                'id_salle' => $data['id_salle'],
+            ],
         ]);
     }
 }

@@ -36,7 +36,10 @@ class FiliersController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Filiere created successfully',
+            'data' => [
+                'nom_filiere' => $nomFiliere,
+                'id_pole' => $data['id_pole'],
+            ],
         ]);
     }
 }

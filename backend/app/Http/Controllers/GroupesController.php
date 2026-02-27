@@ -42,7 +42,13 @@ class GroupesController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Groupe created successfully',
+            'data' => [
+                'nom_groupe' => $data['nom_groupe'],
+                'annee' => $data['annee'],
+                'niveau' => $data['niveau'],
+                'creneau' => $data['crenau'],
+                'id_filiere' => $idFiliere,
+            ],
         ]);
     }
 }

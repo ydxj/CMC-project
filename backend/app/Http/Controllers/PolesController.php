@@ -23,7 +23,10 @@ class PolesController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Pole created successfully',
+            'data' => [
+                'nom_pole' => $data['nom_pole'],
+                'id_chef' => $data['id_chef'],
+            ],
         ]);
     }
 }

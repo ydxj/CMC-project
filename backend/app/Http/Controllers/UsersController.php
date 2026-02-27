@@ -32,7 +32,13 @@ class UsersController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'User created successfully',
+            'data' => [
+                'nom' => $data['nom'],
+                'prenom' => $data['prenom'],
+                'email' => $data['email'],
+                'role' => $data['role'],
+                'matricule' => $data['matricule'],
+            ],
         ]);
     }
 }
