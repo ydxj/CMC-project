@@ -32,29 +32,20 @@ class FiliersController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nom_formation' => 'sometimes|string|max:150',
-            'nom_filiere' => 'sometimes|string|max:150',
+            'nom_formation' => 'required|string|max:150',
+            'nom_filiere' => 'required|string|max:150',
             'id_pole' => 'required|integer|exists:poles,id',
         ]);
 
-        $nomFiliere = $data['nom_formation'] ?? $data['nom_filiere'] ?? null;
-
-        if ($nomFiliere === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'nom_formation is required',
-            ], 422);
-        }
-
         Filiere::create([
-            'nom_filiere' => $nomFiliere,
+            'nom_filiere' => $data['nom_filiere'],
             'id_pole' => $data['id_pole'],
         ]);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'nom_filiere' => $nomFiliere,
+                'nom_filiere' => $data['nom_filiere'],
                 'id_pole' => $data['id_pole'],
             ],
         ]);

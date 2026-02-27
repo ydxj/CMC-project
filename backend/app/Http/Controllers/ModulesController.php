@@ -34,23 +34,14 @@ class ModulesController extends Controller
         $data = $request->validate([
             'nom_module' => 'required|string|max:150',
             'volume_horaire' => 'required|integer|min:1',
-            'id_formation' => 'sometimes|integer|exists:filieres,id',
-            'id_filiere' => 'sometimes|integer|exists:filieres,id',
+            'id_formation' => 'required|integer|exists:filieres,id',
+            'id_filiere' => 'required|integer|exists:filieres,id',
         ]);
-
-        $idFiliere = $data['id_formation'] ?? $data['id_filiere'] ?? null;
-
-        if ($idFiliere === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'id_formation is required',
-            ], 422);
-        }
 
         Module::create([
             'nom_module' => $data['nom_module'],
             'volume_horaire' => $data['volume_horaire'],
-            'id_filiere' => $idFiliere,
+            'id_filiere' => $data['id_filiere'],
         ]);
 
         return response()->json([
@@ -58,7 +49,7 @@ class ModulesController extends Controller
             'data' => [
                 'nom_module' => $data['nom_module'],
                 'volume_horaire' => $data['volume_horaire'],
-                'id_filiere' => $idFiliere,
+                'id_filiere' => $data['id_filiere'],
             ],
         ]);
     }

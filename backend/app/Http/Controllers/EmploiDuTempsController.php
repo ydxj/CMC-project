@@ -69,4 +69,8 @@ class EmploiDuTempsController extends Controller
             ],
         ]);
     }
+
+    // I can add here methods that get the weekly schedule for a specific group, module, formateur, or salle if needed.
+    // soon
+
 }

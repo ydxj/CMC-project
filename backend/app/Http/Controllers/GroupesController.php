@@ -36,25 +36,16 @@ class GroupesController extends Controller
             'annee' => 'required|string|max:20',
             'niveau' => 'required|in:TS,T,Q,S,FQ,BP,PC',
             'crenau' => 'required|in:CDJ,CDS',
-            'id_formation' => 'sometimes|integer|exists:filieres,id',
-            'id_filiere' => 'sometimes|integer|exists:filieres,id',
+            'id_formation' => 'required|integer|exists:filieres,id',
+            'id_filiere' => 'required|integer|exists:filieres,id',
         ]);
-
-        $idFiliere = $data['id_formation'] ?? $data['id_filiere'] ?? null;
-
-        if ($idFiliere === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'id_formation is required',
-            ], 422);
-        }
 
         Groupe::create([
             'nom_groupe' => $data['nom_groupe'],
             'annee' => $data['annee'],
             'niveau' => $data['niveau'],
             'creneau' => $data['crenau'],
-            'id_filiere' => $idFiliere,
+            'id_filiere' => $data['id_filiere'],
         ]);
 
         return response()->json([
@@ -64,7 +55,7 @@ class GroupesController extends Controller
                 'annee' => $data['annee'],
                 'niveau' => $data['niveau'],
                 'creneau' => $data['crenau'],
-                'id_filiere' => $idFiliere,
+                'id_filiere' => $data['id_filiere'],
             ],
         ]);
     }
