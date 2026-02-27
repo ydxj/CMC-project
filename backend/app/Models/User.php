@@ -17,10 +17,15 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+
+    protected $table = 'users';
     protected $fillable = [
-        'name',
+        'nom',
+        'prenom',
         'email',
+        'matricule',
         'password',
+        'role',
     ];
 
     /**
@@ -30,7 +35,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
     /**
@@ -41,8 +45,19 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public $timestamps = false;
+
+    public function formateur()
+    {
+        return $this->hasOne(Formateur::class, 'id_user');
+    }
+
+    public function polesAsChef()
+    {
+        return $this->hasMany(Pole::class, 'id_chef');
     }
 }
