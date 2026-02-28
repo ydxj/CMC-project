@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -25,13 +24,43 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Create Sanctum token
+        $token = $user->createToken('api-token')->plainTextToken;
+
         return response()->json([
             'success' => true,
-            'token' => Str::random(60),
+            'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'nom' => $user->nom,
                 'prenom' => $user->prenom,
+                'role' => $user->role,
+            ],
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        // Revoke the current user's token
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Successfully logged out',
+        ]);
+    }
+
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->id,
+                'nom' => $user->nom,
+                'prenom' => $user->prenom,
+                'email' => $user->email,
                 'role' => $user->role,
             ],
         ]);
