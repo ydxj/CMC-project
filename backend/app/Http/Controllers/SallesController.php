@@ -48,4 +48,52 @@ class SallesController extends Controller
             ],
         ]);
     }
+
+    public function update(Request $request, $id)
+    {
+        $salle = Salle::find($id);
+
+        if (!$salle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Salle not found',
+            ], 404);
+        }
+
+        $data = $request->validate([
+            'nom_salle' => 'sometimes|required|string|max:100',
+            'type_salle' => 'sometimes|required|in:SALLE,ATELIER',
+            'id_pole' => 'sometimes|required|integer|exists:poles,id',
+        ]);
+
+        $salle->update([
+            'nom_salle' => $data['nom_salle'] ?? $salle->nom_salle,
+            'type_salle' => $data['type_salle'] ?? $salle->type_salle,
+            'id_pole' => $data['id_pole'] ?? $salle->id_pole,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $salle,
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $salle = Salle::find($id);
+
+        if (!$salle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Salle not found',
+            ], 404);
+        }
+
+        $salle->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Salle deleted successfully',
+        ]);
+    }
 }
