@@ -50,4 +50,50 @@ class FiliersController extends Controller
             ],
         ]);
     }
+
+    public function update(Request $request, $id)
+    {
+        $filiere = Filiere::find($id);
+
+        if (!$filiere) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Filiere not found',
+            ], 404);
+        }
+
+        $data = $request->validate([
+            'nom_filiere' => 'sometimes|required|string|max:150',
+            'id_pole' => 'sometimes|required|integer|exists:poles,id',
+        ]);
+
+        $filiere->update([
+            'nom_filiere' => $data['nom_filiere'] ?? $filiere->nom_filiere,
+            'id_pole' => $data['id_pole'] ?? $filiere->id_pole,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $filiere,
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $filiere = Filiere::find($id);
+
+        if (!$filiere) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Filiere not found',
+            ], 404);
+        }
+
+        $filiere->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Filiere deleted successfully',
+        ]);
+    }
 }
