@@ -59,4 +59,56 @@ class GroupesController extends Controller
             ],
         ]);
     }
+
+    public function update(Request $request, $id)
+    {
+        $groupe = Groupe::find($id);
+
+        if (!$groupe) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Groupe not found',
+            ], 404);
+        }
+
+        $data = $request->validate([
+            'nom_groupe' => 'sometimes|required|string|max:100',
+            'annee' => 'sometimes|required|string|max:20',
+            'niveau' => 'sometimes|required|in:TS,T,Q,S,FQ,BP,PC',
+            'crenau' => 'sometimes|required|in:CDJ,CDS',
+            'id_filiere' => 'sometimes|required|integer|exists:filieres,id',
+        ]);
+
+        $groupe->update([
+            'nom_groupe' => $data['nom_groupe'] ?? $groupe->nom_groupe,
+            'annee' => $data['annee'] ?? $groupe->annee,
+            'niveau' => $data['niveau'] ?? $groupe->niveau,
+            'creneau' => $data['crenau'] ?? $groupe->creneau,
+            'id_filiere' => $data['id_filiere'] ?? $groupe->id_filiere,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $groupe,
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $groupe = Groupe::find($id);
+
+        if (!$groupe) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Groupe not found',
+            ], 404);
+        }
+
+        $groupe->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Groupe deleted successfully',
+        ]);
+    }
 }
