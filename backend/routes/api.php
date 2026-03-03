@@ -27,7 +27,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('filiers', FiliersController::class);
     Route::resource('groupes', GroupesController::class);
     Route::resource('modules', ModulesController::class);
+    Route::get('emploi-du-temps/weekly', [EmploiDuTempsController::class, 'getWeeklySchedule']);
     Route::resource('emploi-du-temps', EmploiDuTempsController::class);
 
-    Route::post('/module-formateur', [ModuleFormateurController::class, 'store']);
+    Route::resource('module-formateur', ModuleFormateurController::class);
+    Route::get('formateur/{id_formateur}/modules', [ModuleFormateurController::class, 'getFormateurModules']);
+    Route::get('module/{id_module}/formateurs', [ModuleFormateurController::class, 'getModuleFormateurs']);
+    Route::get('groupe/{id_groupe}/modules', [ModuleFormateurController::class, 'getGroupeModules']);
 });
