@@ -6,6 +6,7 @@ use App\Models\Formateur;
 use App\Models\Pole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class TestUsersSeeder extends Seeder
@@ -72,7 +73,13 @@ class TestUsersSeeder extends Seeder
             $digitalPole = Pole::where('nom_pole', 'Digital et Intelligence Artificielle')->first();
 
             if ($digitalPole) {
-                $formateur->poles()->syncWithoutDetaching([$digitalPole->id]);
+                    DB::table('formateur_pole')->updateOrInsert(
+                        [
+                            'id_user' => $formateur->id,
+                            'id_pole' => $digitalPole->id,
+                        ],
+                        []
+                    );
             }
         }
     }

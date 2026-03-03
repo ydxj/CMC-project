@@ -32,6 +32,6 @@ class Pole extends Model
 
     public function formateurs()
     {
-        return $this->belongsToMany(Formateur::class, 'formateur_pole', 'id_pole', 'id_formateur');
+        return $this->belongsToMany(Formateur::class, 'formateur_pole', 'id_pole', 'id_user');
     }
 }

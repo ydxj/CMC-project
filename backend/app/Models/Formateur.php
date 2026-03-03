@@ -24,7 +24,7 @@ class Formateur extends Model
 
     public function poles()
     {
-        return $this->belongsToMany(Pole::class, 'formateur_pole', 'id_formateur', 'id_pole');
+        return $this->belongsToMany(Pole::class, 'formateur_pole', 'id_user', 'id_pole');
     }
 
     public function moduleGroupeFormateurs()
