@@ -43,38 +43,65 @@
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Dashboard</p>
             <h2 class="mt-2 text-2xl font-bold text-slate-900">{{ greetingTitle }}</h2>
-            <p class="mt-2 max-w-3xl text-sm text-slate-600">
+            <!-- <p class="mt-2 max-w-3xl text-sm text-slate-600">
               Pilot CMC planning with role-based actions and clear access to poles, salles, filieres, formateurs and emploi du temps.
-            </p>
+            </p> -->
         </section>
 
         <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Poles</p>
-              <p class="mt-3 text-2xl font-bold text-slate-900">{{ stats.poles }}</p>
-              <p class="mt-1 text-xs text-slate-500">Training departments</p>
-            </article>
-
-            <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Salles / Ateliers</p>
-              <p class="mt-3 text-2xl font-bold text-slate-900">{{ stats.salles }}</p>
-              <p class="mt-1 text-xs text-slate-500">Available learning spaces</p>
-            </article>
-
-            <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Formateurs</p>
-              <p class="mt-3 text-2xl font-bold text-slate-900">{{ stats.formateurs }}</p>
-              <p class="mt-1 text-xs text-slate-500">Assigned teachers</p>
-            </article>
-
-            <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Modules</p>
-              <p class="mt-3 text-2xl font-bold text-slate-900">{{ stats.modules }}</p>
-              <p class="mt-1 text-xs text-slate-500">Courses and units</p>
-            </article>
+          <article
+            v-for="card in statCards"
+            :key="card.key"
+            class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ card.label }}</p>
+            <p
+              class="mt-3 text-slate-900"
+              :class="typeof card.value === 'number' ? 'text-2xl font-bold' : 'text-sm font-semibold leading-6'"
+            >
+              {{ card.value }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">{{ card.description }}</p>
+          </article>
         </section>
 
-        <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section
+          v-if="isFormateur"
+          class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+        >
+          <h3 class="text-base font-semibold text-slate-900">Mon Apercu</h3>
+          <p class="mt-1 text-sm text-slate-600">
+            Vos modules, groupes et poles assignes a partir des donnees API.
+          </p>
+
+          <div class="mt-4 grid gap-4 sm:grid-cols-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mes Modules</p>
+              <ul class="mt-2 space-y-1 text-sm text-slate-700">
+                <li v-for="name in formateurOverview.modules" :key="`m-${name}`">{{ name }}</li>
+                <li v-if="formateurOverview.modules.length === 0" class="text-slate-400">Aucun module assigne</li>
+              </ul>
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mes Groupes</p>
+              <ul class="mt-2 space-y-1 text-sm text-slate-700">
+                <li v-for="name in formateurOverview.groupes" :key="`g-${name}`">{{ name }}</li>
+                <li v-if="formateurOverview.groupes.length === 0" class="text-slate-400">Aucun groupe assigne</li>
+              </ul>
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mon Pole</p>
+              <ul class="mt-2 space-y-1 text-sm text-slate-700">
+                <li v-for="name in formateurOverview.poles" :key="`p-${name}`">{{ name }}</li>
+                <li v-if="formateurOverview.poles.length === 0" class="text-slate-400">Aucun pole assigne</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h3 class="text-base font-semibold text-slate-900">Access Policy Summary</h3>
             <p class="mt-1 text-sm text-slate-600">
               Directeur has global management rights, Chef de Pole manages his pole, and Formateur has personal views only.
@@ -118,7 +145,7 @@
                 </tbody>
               </table>
             </div>
-        </section>
+        </section> -->
       </main>
     </div>
 
@@ -176,17 +203,73 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useApi } from '../../composables/useApi'
+
+interface UserItem {
+  id: number
+  role: string
+}
+
+interface PoleItem {
+  id: number
+  id_chef?: number | null
+  nom_pole?: string
+}
+
+interface SalleItem {
+  id: number
+  id_pole?: number | null
+}
+
+interface FiliereItem {
+  id: number
+  id_pole?: number | null
+}
+
+interface ModuleItem {
+  id: number
+  id_filiere?: number | null
+  nom_module?: string
+}
+
+interface FormateurItem {
+  id: number
+  id_user?: number
+  user?: { id?: number }
+}
+
+interface GroupeItem {
+  id: number
+  nom_groupe?: string
+}
+
+interface ModuleAssignment {
+  id?: number
+  module?: ModuleItem
+  groupe?: GroupeItem
+}
 
 const authStore = useAuthStore()
 const router = useRouter()
+const api = useApi()
 const isSidebarOpen = ref(false)
+const loadingStats = ref(false)
 
 const stats = reactive({
-  poles: '--',
-  salles: '--',
-  formateurs: '--',
-  modules: '--',
+  poles: '--' as string | number,
+  salles: '--' as string | number,
+  formateurs: '--' as string | number,
+  modules: '--' as string | number,
 })
+
+const formateurOverview = reactive({
+  modules: [] as string[],
+  groupes: [] as string[],
+  poles: [] as string[],
+})
+
+const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
+const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -219,6 +302,168 @@ const handleLogout = async () => {
   router.push('/login')
 }
 
+const extractArray = <T>(payload: unknown): T[] => {
+  if (Array.isArray(payload)) {
+    return payload as T[]
+  }
+
+  const maybeData = (payload as { data?: unknown } | null)?.data
+  if (Array.isArray(maybeData)) {
+    return maybeData as T[]
+  }
+
+  return []
+}
+
+const getUniqueCount = (items: Array<number | undefined | null>) => {
+  return new Set(items.filter((item): item is number => typeof item === 'number')).size
+}
+
+const statCards = computed(() => {
+  if (isFormateur.value) {
+    return [
+      { key: 'modules', label: 'Mes Modules', value: stats.modules, description: 'Modules assignes' },
+      { key: 'groupes', label: 'Mes Groupes', value: stats.formateurs, description: 'Groupes enseignes' },
+      { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Nom du pole d appartenance' },
+      { key: 'assignments', label: 'Seances', value: stats.salles, description: 'Affectations actives' },
+    ]
+  }
+
+  if (isChefPole.value) {
+    return [
+      { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Pole(s) que vous gerez' },
+      { key: 'salles', label: 'Salles / Ateliers', value: stats.salles, description: 'Available learning spaces' },
+      { key: 'formateurs', label: 'Formateurs', value: stats.formateurs, description: 'Assigned teachers' },
+      { key: 'modules', label: 'Modules', value: stats.modules, description: 'Courses and units' },
+    ]
+  }
+
+  return [
+    { key: 'poles', label: 'Poles', value: stats.poles, description: 'Training departments' },
+    { key: 'salles', label: 'Salles / Ateliers', value: stats.salles, description: 'Available learning spaces' },
+    { key: 'formateurs', label: 'Formateurs', value: stats.formateurs, description: 'Assigned teachers' },
+    { key: 'modules', label: 'Modules', value: stats.modules, description: 'Courses and units' },
+  ]
+})
+
+const loadDashboardStats = async () => {
+  if (!authStore.user) return
+
+  loadingStats.value = true
+
+  try {
+    const role = authStore.user.role
+    const userId = authStore.user.id
+
+    if (role === 'DIRECTEUR') {
+      const [polesRes, sallesRes, usersRes, modulesRes] = await Promise.all([
+        api.get<PoleItem[]>('/poles'),
+        api.get<SalleItem[]>('/salles'),
+        api.get<UserItem[]>('/users'),
+        api.get<ModuleItem[]>('/modules'),
+      ])
+
+      const poles = extractArray<PoleItem>(polesRes)
+      const salles = extractArray<SalleItem>(sallesRes)
+      const users = extractArray<UserItem>(usersRes)
+      const modules = extractArray<ModuleItem>(modulesRes)
+
+      stats.poles = poles.length
+      stats.salles = salles.length
+      stats.formateurs = users.filter((user) => user.role === 'FORMATEUR').length
+      stats.modules = modules.length
+      return
+    }
+
+    if (role === 'CHEF_POLE') {
+      const [polesRes, sallesRes, filieresRes, modulesRes] = await Promise.all([
+        api.get<PoleItem[]>('/poles'),
+        api.get<SalleItem[]>('/salles'),
+        api.get<FiliereItem[]>('/filiers'),
+        api.get<ModuleItem[]>('/modules'),
+      ])
+
+      const poles = extractArray<PoleItem>(polesRes).filter((pole) => pole.id_chef === userId)
+      const poleIds = new Set(poles.map((pole) => pole.id))
+
+      const salles = extractArray<SalleItem>(sallesRes).filter((salle) => {
+        return typeof salle.id_pole === 'number' && poleIds.has(salle.id_pole)
+      })
+
+      const filieres = extractArray<FiliereItem>(filieresRes).filter((filiere) => {
+        return typeof filiere.id_pole === 'number' && poleIds.has(filiere.id_pole)
+      })
+
+      const filiereIds = new Set(filieres.map((filiere) => filiere.id))
+      const modules = extractArray<ModuleItem>(modulesRes).filter((moduleItem) => {
+        return typeof moduleItem.id_filiere === 'number' && filiereIds.has(moduleItem.id_filiere)
+      })
+
+      const formateursByPole = await Promise.all(
+        poles.map((pole) => api.get<{ success: boolean; data: FormateurItem[] }>(`/poles/${pole.id}/formateurs`))
+      )
+      const allFormateurs = formateursByPole.flatMap((response) => extractArray<FormateurItem>(response))
+      const poleNames = Array.from(new Set(poles.map((pole) => pole.nom_pole).filter(Boolean) as string[]))
+
+      stats.poles = poleNames.length > 0 ? poleNames.join(' / ') : '--'
+      stats.salles = salles.length
+      stats.formateurs = getUniqueCount(allFormateurs.map((formateur) => formateur.id))
+      stats.modules = modules.length
+      return
+    }
+
+    const polesRes = await api.get<PoleItem[]>('/poles')
+    const poles = extractArray<PoleItem>(polesRes)
+
+    const perPoleFormateurs = await Promise.all(
+      poles.map((pole) => api.get<{ success: boolean; data: FormateurItem[] }>(`/poles/${pole.id}/formateurs`))
+    )
+
+    const relatedFormateurs: FormateurItem[] = []
+    const relatedPoles: PoleItem[] = []
+
+    for (let i = 0; i < poles.length; i += 1) {
+      const pole = poles[i]
+      if (!pole) {
+        continue
+      }
+
+      const poleFormateurs = extractArray<FormateurItem>(perPoleFormateurs[i])
+      const matchesPole = poleFormateurs.some((formateur) => {
+        return formateur.id_user === userId || formateur.user?.id === userId
+      })
+
+      if (matchesPole) {
+        relatedPoles.push(pole)
+        relatedFormateurs.push(...poleFormateurs.filter((formateur) => formateur.id_user === userId || formateur.user?.id === userId))
+      }
+    }
+
+    const formateurIds = Array.from(new Set(relatedFormateurs.map((formateur) => formateur.id)))
+    const assignmentsResponses = await Promise.all(
+      formateurIds.map((id) => api.get<{ success: boolean; data: ModuleAssignment[] }>(`/formateur/${id}/modules`))
+    )
+    const assignments = assignmentsResponses.flatMap((response) => extractArray<ModuleAssignment>(response))
+
+    const moduleNames = Array.from(new Set(assignments.map((assignment) => assignment.module?.nom_module).filter(Boolean) as string[]))
+    const groupeNames = Array.from(new Set(assignments.map((assignment) => assignment.groupe?.nom_groupe).filter(Boolean) as string[]))
+    const poleNames = Array.from(new Set(relatedPoles.map((pole) => pole.nom_pole).filter(Boolean) as string[]))
+
+    formateurOverview.modules = moduleNames
+    formateurOverview.groupes = groupeNames
+    formateurOverview.poles = poleNames
+
+    stats.modules = moduleNames.length
+    stats.formateurs = groupeNames.length
+    stats.poles = poleNames.length > 0 ? poleNames.join(' / ') : '--'
+    stats.salles = assignments.length
+  } catch (error) {
+    console.error('Dashboard stats error:', error)
+  } finally {
+    loadingStats.value = false
+  }
+}
+
 onMounted(async () => {
   authStore.initializeAuth()
 
@@ -232,6 +477,9 @@ onMounted(async () => {
 
   if (!authStore.isAuthenticated) {
     router.push('/login')
+    return
   }
+
+  await loadDashboardStats()
 })
 </script>
