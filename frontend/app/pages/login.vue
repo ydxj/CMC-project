@@ -28,13 +28,6 @@
               {{ errorMessage }}
             </div>
 
-        <!-- ERROR -->
-        <div
-          v-if="errorMessage"
-          class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {{ errorMessage }}
-        </div>
 
         <!-- FORM -->
         <form @submit.prevent="handleLogin" class="space-y-5">

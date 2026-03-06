@@ -13,7 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        // Removed statefulApi() for token-based authentication
+        // API routes use Sanctum tokens instead of session/CSRF
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
