@@ -92,4 +92,61 @@ class PolesController extends Controller
             'message' => 'Pole deleted successfully',
         ]);
     }
+
+    public function getFormateurs($id)
+    {
+        $pole = Pole::find($id);
+
+        if (!$pole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pole not found',
+            ], 404);
+        }
+
+        $formateurs = $pole->formateurs()->with('user')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $formateurs,
+        ]);
+    }
+
+    public function getSalles($id)
+    {
+        $pole = Pole::find($id);
+
+        if (!$pole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pole not found',
+            ], 404);
+        }
+
+        $salles = $pole->salles;
+
+        return response()->json([
+            'success' => true,
+            'data' => $salles,
+        ]);
+    }
+
+    public function getFilieres($id)
+    {
+        $pole = Pole::find($id);
+
+        if (!$pole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pole not found',
+            ], 404);
+        }
+
+        $filieres = $pole->filieres;
+
+        return response()->json([
+            'success' => true,
+            'data' => $filieres,
+        ]);
+    }
 }

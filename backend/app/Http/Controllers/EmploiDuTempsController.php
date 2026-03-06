@@ -186,4 +186,50 @@ class EmploiDuTempsController extends Controller
             'data' => $schedules,
         ]);
     }
+
+    public function getByFormateur($id)
+    {
+        $schedules = EmploiDuTemps::whereHas('moduleGroupeFormateur', function ($q) use ($id) {
+            $q->where('id_formateur', $id);
+        })
+            ->with(['moduleGroupeFormateur.groupe', 'moduleGroupeFormateur.module', 'moduleGroupeFormateur.formateur', 'salle'])
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedules,
+        ]);
+    }
+
+    public function getByGroupe($id)
+    {
+        $schedules = EmploiDuTemps::whereHas('moduleGroupeFormateur', function ($q) use ($id) {
+            $q->where('id_groupe', $id);
+        })
+            ->with(['moduleGroupeFormateur.groupe', 'moduleGroupeFormateur.module', 'moduleGroupeFormateur.formateur', 'salle'])
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedules,
+        ]);
+    }
+
+    public function getBySalle($id)
+    {
+        $schedules = EmploiDuTemps::where('id_salle', $id)
+            ->with(['moduleGroupeFormateur.groupe', 'moduleGroupeFormateur.module', 'moduleGroupeFormateur.formateur', 'salle'])
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedules,
+        ]);
+    }
 }

@@ -27,8 +27,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('filiers', FiliersController::class);
     Route::resource('groupes', GroupesController::class);
     Route::resource('modules', ModulesController::class);
+
+    // Schedule routes
     Route::get('emploi-du-temps/weekly', [EmploiDuTempsController::class, 'getWeeklySchedule']);
+    Route::get('emploi-du-temps/formateur/{id}', [EmploiDuTempsController::class, 'getByFormateur']);
+    Route::get('emploi-du-temps/groupe/{id}', [EmploiDuTempsController::class, 'getByGroupe']);
+    Route::get('emploi-du-temps/salle/{id}', [EmploiDuTempsController::class, 'getBySalle']);
     Route::resource('emploi-du-temps', EmploiDuTempsController::class);
+
+    // Pole-scoped queries
+    Route::get('poles/{id}/formateurs', [PolesController::class, 'getFormateurs']);
+    Route::get('poles/{id}/salles', [PolesController::class, 'getSalles']);
+    Route::get('poles/{id}/filieres', [PolesController::class, 'getFilieres']);
 
     Route::resource('module-formateur', ModuleFormateurController::class);
     Route::get('formateur/{id_formateur}/modules', [ModuleFormateurController::class, 'getFormateurModules']);
