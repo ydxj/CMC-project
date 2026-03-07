@@ -15,11 +15,11 @@ class UsersController extends Controller
 
         if ($limit === null && $offset === null) {
             return response()->json(
-                User::select('id', 'nom', 'prenom', 'email', 'role')->get()
+                User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule')->get()
             );
         }
 
-        $query = User::select('id', 'nom', 'prenom', 'email', 'role');
+        $query = User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule');
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));

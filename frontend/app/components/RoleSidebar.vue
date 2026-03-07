@@ -120,7 +120,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Utilisateurs',
         items: [
           { label: 'Liste des utilisateurs', path: '/users', icon: 'users' },
-          { label: 'Ajouter utilisateur', path: '/users/create', icon: 'user-plus' },
+          { label: 'Ajouter utilisateur', path: '/users/add', icon: 'user-plus' },
         ],
       },
       {
