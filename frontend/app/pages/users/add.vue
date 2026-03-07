@@ -188,6 +188,82 @@
                   <option value="FORMATEUR">Formateur</option>
                 </select>
               </div>
+
+              <!-- Formateur Details -->
+              <section
+                v-if="isFormateurSelected"
+                class="rounded-xl border border-sky-200 bg-sky-50/60 p-4"
+              >
+                <h3 class="text-sm font-semibold text-sky-800">Informations Formateur</h3>
+                <p class="mt-1 text-xs text-sky-700">Ces champs sont requis pour un utilisateur de type Formateur.</p>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label for="type_formateur" class="block text-sm font-medium text-slate-700 mb-1">
+                      Type formateur <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="type_formateur"
+                      v-model="form.type_formateur"
+                      :required="isFormateurSelected"
+                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                    >
+                      <option value="">Sélectionner</option>
+                      <option value="FP">FP</option>
+                      <option value="FV">FV</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label for="MHS" class="block text-sm font-medium text-slate-700 mb-1">
+                      MHS <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="MHS"
+                      v-model.number="form.MHS"
+                      type="number"
+                      min="0"
+                      step="1"
+                      :required="isFormateurSelected"
+                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                      placeholder="Ex: 80"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="NBR_semaine" class="block text-sm font-medium text-slate-700 mb-1">
+                      NBR semaine <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="NBR_semaine"
+                      v-model.number="form.NBR_semaine"
+                      type="number"
+                      min="0"
+                      step="1"
+                      :required="isFormateurSelected"
+                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                      placeholder="Ex: 30"
+                    />
+                  </div>
+
+                  <div class="sm:col-span-3">
+                    <label for="id_pole" class="block text-sm font-medium text-slate-700 mb-1">
+                      Pole <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="id_pole"
+                      v-model.number="form.id_pole"
+                      :required="isFormateurSelected"
+                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                    >
+                      <option :value="null">Sélectionner un pôle</option>
+                      <option v-for="pole in poles" :key="pole.id" :value="pole.id">
+                        {{ pole.nom_pole }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </section>
             </div>
 
             <!-- Form Actions -->
@@ -271,7 +347,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../composables/useApi'
 import { useAuthStore } from '../../../stores/auth'
@@ -288,6 +364,13 @@ const isSidebarOpen = ref(false)
 const submitting = ref(false)
 const errorMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
+
+interface PoleItem {
+  id: number
+  nom_pole: string
+}
+
+const poles = ref<PoleItem[]>([])
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -316,8 +399,14 @@ const form = ref({
   email: '',
   password: '',
   password_confirmation: '',
-  role: ''
+  role: '',
+  type_formateur: '',
+  MHS: null as number | null,
+  NBR_semaine: null as number | null,
+  id_pole: null as number | null,
 })
+
+const isFormateurSelected = computed(() => form.value.role === 'FORMATEUR')
 
 const passwordMismatch = computed(() => {
   return form.value.password && form.value.password_confirmation && 
@@ -335,10 +424,30 @@ const handleSubmit = async () => {
     return
   }
 
+  if (
+    isFormateurSelected.value &&
+    (
+      !form.value.type_formateur ||
+      form.value.MHS === null ||
+      form.value.NBR_semaine === null ||
+      form.value.id_pole === null
+    )
+  ) {
+    errorMessage.value = 'Pour un formateur, veuillez renseigner type formateur, MHS, NBR semaine et pôle.'
+    return
+  }
+
   submitting.value = true
 
   try {
     const { password_confirmation, ...userData } = form.value
+
+    if (!isFormateurSelected.value) {
+      userData.type_formateur = ''
+      userData.MHS = null
+      userData.NBR_semaine = null
+      userData.id_pole = null
+    }
     
     await api.post('/users', userData)
 
@@ -352,7 +461,11 @@ const handleSubmit = async () => {
       email: '',
       password: '',
       password_confirmation: '',
-      role: ''
+      role: '',
+      type_formateur: '',
+      MHS: null,
+      NBR_semaine: null,
+      id_pole: null,
     }
 
     // Redirect after 1.5 seconds
@@ -380,4 +493,17 @@ const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
+
+const loadPoles = async () => {
+  try {
+    const response = await api.get<PoleItem[] | { data: PoleItem[] }>('/poles')
+    poles.value = Array.isArray(response) ? response : ((response as any).data || [])
+  } catch (err) {
+    console.error('Error loading poles:', err)
+  }
+}
+
+onMounted(() => {
+  loadPoles()
+})
 </script>

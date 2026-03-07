@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Formateur;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class UsersController extends Controller
 {
@@ -41,21 +44,65 @@ class UsersController extends Controller
             'password' => 'required|string|min:6',
             'role' => 'required|in:DIRECTEUR,CHEF_POLE,FORMATEUR',
             'matricule' => 'required|string|max:50',
+            'type_formateur' => 'nullable|required_if:role,FORMATEUR|in:FP,FV',
+            'MHS' => 'nullable|required_if:role,FORMATEUR|integer|min:0',
+            'NBR_semaine' => 'nullable|required_if:role,FORMATEUR|integer|min:0',
+            'id_pole' => 'nullable|required_if:role,FORMATEUR|integer|exists:poles,id',
         ]);
 
-        $data['password'] = Hash::make($data['password']);
-        User::create($data);
-        // var_dump($data);
-        // die();
+        $user = DB::transaction(function () use ($data) {
+            $userData = [
+                'nom' => $data['nom'],
+                'prenom' => $data['prenom'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'role' => $data['role'],
+                'matricule' => $data['matricule'],
+            ];
+
+            $user = User::create($userData);
+
+            if ($data['role'] === 'FORMATEUR') {
+                $formateur = Formateur::create([
+                    'id_user' => $user->id,
+                    'type_formateur' => $data['type_formateur'] ?? null,
+                    'MHS' => $data['MHS'] ?? null,
+                    'NBR_semaine' => $data['NBR_semaine'] ?? null,
+                ]);
+
+                if (!empty($data['id_pole'])) {
+                    if (Schema::hasColumn('formateur_pole', 'id_formateur')) {
+                        DB::table('formateur_pole')->insert([
+                            'id_formateur' => $formateur->id,
+                            'id_pole' => $data['id_pole'],
+                        ]);
+                    } elseif (Schema::hasColumn('formateur_pole', 'id_user')) {
+                        DB::table('formateur_pole')->insert([
+                            'id_user' => $user->id,
+                            'id_pole' => $data['id_pole'],
+                        ]);
+                    }
+                }
+            }
+
+            return $user;
+        });
 
         return response()->json([
             'success' => true,
             'data' => [
+                'id' => $user->id,
                 'nom' => $data['nom'],
                 'prenom' => $data['prenom'],
                 'email' => $data['email'],
                 'role' => $data['role'],
                 'matricule' => $data['matricule'],
+                'formateur' => $data['role'] === 'FORMATEUR' ? [
+                    'type_formateur' => $data['type_formateur'] ?? null,
+                    'MHS' => $data['MHS'] ?? null,
+                    'NBR_semaine' => $data['NBR_semaine'] ?? null,
+                    'id_pole' => $data['id_pole'] ?? null,
+                ] : null,
             ],
         ]);
     }
