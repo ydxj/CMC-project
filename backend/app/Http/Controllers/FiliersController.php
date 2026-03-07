@@ -13,10 +13,10 @@ class FiliersController extends Controller
         $offset = $request->query('offset');
 
         if ($limit === null && $offset === null) {
-            return response()->json(Filiere::all());
+            return response()->json(Filiere::with('pole')->get());
         }
 
-        $query = Filiere::query();
+        $query = Filiere::with('pole');
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
@@ -32,7 +32,6 @@ class FiliersController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nom_formation' => 'required|string|max:150',
             'nom_filiere' => 'required|string|max:150',
             'id_pole' => 'required|integer|exists:poles,id',
         ]);

@@ -141,7 +141,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Filieres',
         items: [
           { label: 'Liste des filieres', path: '/filieres', icon: 'book' },
-          { label: 'Ajouter filiere', path: '/filieres/create', icon: 'book' },
+          { label: 'Ajouter filiere', path: '/filieres/add', icon: 'book' },
         ],
       },
       {
@@ -175,7 +175,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Filieres',
         items: [
           { label: 'Liste des filieres', path: '/filieres', icon: 'book' },
-          { label: 'Ajouter filiere', path: '/filieres/create', icon: 'book' },
+          { label: 'Ajouter filiere', path: '/filieres/add', icon: 'book' },
         ],
       },
       {
