@@ -13,10 +13,10 @@ class SallesController extends Controller
         $offset = $request->query('offset');
 
         if ($limit === null && $offset === null) {
-            return response()->json(Salle::all());
+            return response()->json(Salle::with('pole')->get());
         }
 
-        $query = Salle::query();
+        $query = Salle::with('pole');
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
