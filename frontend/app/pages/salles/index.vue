@@ -80,48 +80,82 @@
         </div>
 
         <div v-else class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
-              <thead class="bg-slate-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">ID</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nom</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Type</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Pole</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-200 bg-white">
-                <tr v-if="filteredSalles.length === 0">
-                  <td colspan="5" class="px-6 py-8 text-center text-slate-500">Aucune salle trouvee</td>
-                </tr>
-                <tr v-for="salle in filteredSalles" :key="salle.id" class="transition-colors hover:bg-slate-50">
-                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.id }}</td>
-                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.nom_salle }}</td>
-                  <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
-                    <span
-                      :class="[
-                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                        salle.type_salle === 'ATELIER' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'
-                      ]"
-                    >
-                      {{ salle.type_salle }}
-                    </span>
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
-                    {{ salle.pole?.nom_pole || 'Inconnu' }}
-                  </td>
-                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <button @click="deleteSalle(salle)" class="text-red-600 hover:text-red-900" title="Supprimer">
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="groupedSalles.length === 0" class="p-8 text-center text-slate-500">
+            Aucune salle trouvee
           </div>
+
+          <section
+            v-for="group in groupedSalles"
+            :key="group.key"
+            class="overflow-hidden border-t border-slate-200 first:border-t-0"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50"
+              @click="togglePole(group.key)"
+            >
+              <div>
+                <p class="text-sm font-semibold text-slate-900">{{ group.poleName }}</p>
+                <p class="text-xs text-slate-500">{{ group.salles.length }} salle(s)</p>
+              </div>
+              <svg
+                class="h-5 w-5 text-slate-500 transition-transform"
+                :class="isPoleExpanded(group.key) ? 'rotate-180' : ''"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <Transition
+              enter-active-class="transition-all duration-200"
+              enter-from-class="max-h-0 opacity-0"
+              enter-to-class="max-h-[1000px] opacity-100"
+              leave-active-class="transition-all duration-200"
+              leave-from-class="max-h-[1000px] opacity-100"
+              leave-to-class="max-h-0 opacity-0"
+            >
+              <div v-if="isPoleExpanded(group.key)" class="overflow-hidden border-t border-slate-200">
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nom</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Type</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 bg-white">
+                      <tr v-for="salle in group.salles" :key="salle.id" class="transition-colors hover:bg-slate-50">
+                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.id }}</td>
+                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.nom_salle }}</td>
+                        <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                          <span
+                            :class="[
+                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                              salle.type_salle === 'ATELIER' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'
+                            ]"
+                          >
+                            {{ salle.type_salle }}
+                          </span>
+                        </td>
+                        <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                          <button @click="deleteSalle(salle)" class="text-red-600 hover:text-red-900" title="Supprimer">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Transition>
+          </section>
         </div>
       </main>
     </div>
@@ -208,6 +242,7 @@ const salles = ref<Salle[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
+const expandedPoles = ref<Record<string, boolean>>({})
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -229,16 +264,43 @@ const userInitials = computed(() => {
   return `${nom}${prenom}`.toUpperCase() || 'CM'
 })
 
-const filteredSalles = computed(() => {
-  if (!searchQuery.value.trim()) return salles.value
+const groupedSalles = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  const filtered = !query
+    ? salles.value
+    : salles.value.filter((salle) =>
+        salle.nom_salle.toLowerCase().includes(query) ||
+        salle.type_salle.toLowerCase().includes(query) ||
+        salle.pole?.nom_pole?.toLowerCase().includes(query)
+      )
 
-  const query = searchQuery.value.toLowerCase()
-  return salles.value.filter((salle) =>
-    salle.nom_salle.toLowerCase().includes(query) ||
-    salle.type_salle.toLowerCase().includes(query) ||
-    salle.pole?.nom_pole?.toLowerCase().includes(query)
-  )
+  const groupedMap = new Map<string, { key: string; poleName: string; salles: Salle[] }>()
+
+  filtered.forEach((salle) => {
+    const key = salle.id_pole ? String(salle.id_pole) : `unknown-${salle.id}`
+    const poleName = salle.pole?.nom_pole || 'Pole inconnu'
+
+    if (!groupedMap.has(key)) {
+      groupedMap.set(key, { key, poleName, salles: [] })
+    }
+
+    groupedMap.get(key)?.salles.push(salle)
+  })
+
+  return Array.from(groupedMap.values()).sort((a, b) => a.poleName.localeCompare(b.poleName))
 })
+
+const isPoleExpanded = (poleKey: string): boolean => {
+  if (searchQuery.value.trim()) {
+    return true
+  }
+
+  return !!expandedPoles.value[poleKey]
+}
+
+const togglePole = (poleKey: string) => {
+  expandedPoles.value[poleKey] = !expandedPoles.value[poleKey]
+}
 
 const loadSalles = async () => {
   loading.value = true
