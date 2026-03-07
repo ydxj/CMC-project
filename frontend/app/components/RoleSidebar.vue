@@ -127,7 +127,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Poles',
         items: [
           { label: 'Liste des poles', path: '/poles', icon: 'building' },
-          { label: 'Ajouter pole', path: '/poles/create', icon: 'building' },
+          { label: 'Ajouter pole', path: '/poles/add', icon: 'building' },
         ],
       },
       {

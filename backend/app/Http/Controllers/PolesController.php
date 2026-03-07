@@ -13,10 +13,10 @@ class PolesController extends Controller
         $offset = $request->query('offset');
 
         if ($limit === null && $offset === null) {
-            return response()->json(Pole::all());
+            return response()->json(Pole::with('chef')->get());
         }
 
-        $query = Pole::query();
+        $query = Pole::with('chef');
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
