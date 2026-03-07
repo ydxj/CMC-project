@@ -54,14 +54,23 @@
             :key="card.key"
             class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
           >
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ card.label }}</p>
-            <p
-              class="mt-3 text-slate-900"
-              :class="typeof card.value === 'number' ? 'text-2xl font-bold' : 'text-sm font-semibold leading-6'"
-            >
-              {{ card.value }}
-            </p>
-            <p class="mt-1 text-xs text-slate-500">{{ card.description }}</p>
+            <template v-if="loadingStats">
+              <div class="animate-pulse">
+                <div class="h-3 w-24 rounded bg-slate-200"></div>
+                <div class="mt-3 h-8 w-16 rounded bg-slate-200"></div>
+                <div class="mt-2 h-3 w-32 rounded bg-slate-200"></div>
+              </div>
+            </template>
+            <template v-else>
+              <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ card.label }}</p>
+              <p
+                class="mt-3 text-slate-900"
+                :class="typeof card.value === 'number' ? 'text-2xl font-bold' : 'text-sm font-semibold leading-6'"
+              >
+                {{ card.value }}
+              </p>
+              <p class="mt-1 text-xs text-slate-500">{{ card.description }}</p>
+            </template>
           </article>
         </section>
 
@@ -253,7 +262,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 const api = useApi()
 const isSidebarOpen = ref(false)
-const loadingStats = ref(false)
+const loadingStats = ref(true)
 
 const stats = reactive({
   poles: '--' as string | number,
