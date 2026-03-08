@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Formateur;
 use App\Models\Pole;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -224,20 +225,20 @@ class PolesController extends Controller
 
     public function addFormateur(Request $request, $id)
     {
-        $pole = Pole::find($id);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated',
+            ], 401);
+        }
 
+        // Always resolve the chef's pole from auth to avoid stale/mismatched route IDs.
+        $pole = Pole::where('id_chef', $user->id)->first();
         if (!$pole) {
             return response()->json([
                 'success' => false,
-                'message' => 'Pole not found',
-            ], 404);
-        }
-
-        $user = $request->user();
-        if (!$user || $user->id !== $pole->id_chef) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized: You are not the chef of this pole',
+                'message' => 'Unauthorized: You are not the chef of any pole',
             ], 403);
         }
 
@@ -246,13 +247,23 @@ class PolesController extends Controller
         ]);
 
         try {
-            $formateur = Formateur::where('id_user', $data['id_user'])->first();
-            if (!$formateur) {
+            $targetUser = User::find($data['id_user']);
+            if (!$targetUser || $targetUser->role !== 'FORMATEUR') {
                 return response()->json([
                     'success' => false,
                     'message' => 'This user is not a formateur',
                 ], 422);
             }
+
+            // Backfill missing formateur row for legacy/inconsistent data.
+            $formateur = Formateur::firstOrCreate(
+                ['id_user' => $data['id_user']],
+                [
+                    'type_formateur' => null,
+                    'MHS' => null,
+                    'NBR_semaine' => null,
+                ]
+            );
 
             $existing = $pole->formateurs()->wherePivot('id_user', $formateur->id)->exists();
             if ($existing) {
@@ -278,20 +289,19 @@ class PolesController extends Controller
 
     public function removeFormateur(Request $request, $id)
     {
-        $pole = Pole::find($id);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated',
+            ], 401);
+        }
 
+        $pole = Pole::where('id_chef', $user->id)->first();
         if (!$pole) {
             return response()->json([
                 'success' => false,
-                'message' => 'Pole not found',
-            ], 404);
-        }
-
-        $user = $request->user();
-        if (!$user || $user->id !== $pole->id_chef) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized: You are not the chef of this pole',
+                'message' => 'Unauthorized: You are not the chef of any pole',
             ], 403);
         }
 
