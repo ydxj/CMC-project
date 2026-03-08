@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 
 class UsersController extends Controller
 {
@@ -71,17 +70,10 @@ class UsersController extends Controller
                 ]);
 
                 if (!empty($data['id_pole'])) {
-                    if (Schema::hasColumn('formateur_pole', 'id_formateur')) {
-                        DB::table('formateur_pole')->insert([
-                            'id_formateur' => $formateur->id,
-                            'id_pole' => $data['id_pole'],
-                        ]);
-                    } elseif (Schema::hasColumn('formateur_pole', 'id_user')) {
-                        DB::table('formateur_pole')->insert([
-                            'id_user' => $user->id,
-                            'id_pole' => $data['id_pole'],
-                        ]);
-                    }
+                    DB::table('formateur_pole')->insert([
+                        'id_user' => $formateur->id,
+                        'id_pole' => $data['id_pole'],
+                    ]);
                 }
             }
 

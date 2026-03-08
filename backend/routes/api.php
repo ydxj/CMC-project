@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('users', UsersController::class);
     Route::resource('poles', PolesController::class);
+    Route::get('my-poles-formateurs', [PolesController::class, 'getMyPoleFormateurs']);
     Route::resource('salles', SallesController::class);
     Route::resource('filiers', FiliersController::class);
     Route::resource('groupes', GroupesController::class);
@@ -37,6 +38,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Pole-scoped queries
     Route::get('poles/{id}/formateurs', [PolesController::class, 'getFormateurs']);
+    Route::post('poles/{id}/formateurs', [PolesController::class, 'addFormateur']);
+    Route::delete('poles/{id}/formateurs', [PolesController::class, 'removeFormateur']);
     Route::get('poles/{id}/salles', [PolesController::class, 'getSalles']);
     Route::get('poles/{id}/filieres', [PolesController::class, 'getFilieres']);
 

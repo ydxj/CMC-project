@@ -43,7 +43,7 @@
         <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Gestion</p>
           <h2 class="mt-2 text-2xl font-bold text-slate-900">Formateurs</h2>
-          <p class="mt-2 text-sm text-slate-600">Liste des formateurs de l'etablissement</p>
+          <p class="mt-2 text-sm text-slate-600">{{ isPoleScoped ? 'Formateurs de votre pôle' : 'Liste des formateurs de l\'etablissement' }}</p>
         </section>
 
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -77,24 +77,30 @@
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Matricule</th>
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nom complet</th>
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Email</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Pole(s)</th>
+                  <th v-if="!isPoleScoped" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Pole(s)</th>
                   <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200 bg-white">
-                <tr v-if="filteredFormateurs.length === 0">
-                  <td colspan="5" class="px-6 py-8 text-center text-slate-500">Aucun formateur trouve</td>
+                <tr v-if="paginatedFormateurs.length === 0">
+                  <td :colspan="isPoleScoped ? 4 : 5" class="px-6 py-8 text-center text-slate-500">Aucun formateur trouve</td>
                 </tr>
-                <tr v-for="formateur in paginatedFormateurs" :key="formateur.id" class="transition-colors hover:bg-slate-50">
-                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ formateur.matricule || '-' }}</td>
-                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ formateur.prenom }} {{ formateur.nom }}</td>
-                  <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{{ formateur.email }}</td>
-                  <td class="px-6 py-4 text-sm text-slate-600">
-                    <span v-if="getPoleNames(formateur.id).length > 0">{{ getPoleNames(formateur.id).join(', ') }}</span>
+                <tr v-for="(item, idx) in paginatedFormateurs" :key="idx" class="transition-colors hover:bg-slate-50">
+                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
+                    {{ isPoleScoped ? (item as FormateurItem).user?.matricule : (item as UserItem).matricule || '-' }}
+                  </td>
+                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
+                    {{ isPoleScoped ? `${(item as FormateurItem).user?.prenom} ${(item as FormateurItem).user?.nom}` : `${(item as UserItem).prenom} ${(item as UserItem).nom}` }}
+                  </td>
+                  <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                    {{ isPoleScoped ? (item as FormateurItem).user?.email : (item as UserItem).email }}
+                  </td>
+                  <td v-if="!isPoleScoped" class="px-6 py-4 text-sm text-slate-600">
+                    <span v-if="getPoleNames((item as UserItem).id).length > 0">{{ getPoleNames((item as UserItem).id).join(', ') }}</span>
                     <span v-else class="text-slate-400 italic">Non assigne</span>
                   </td>
                   <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <button @click="viewFormateur(formateur)" class="text-sky-600 hover:text-sky-900" title="Voir">
+                    <button @click="viewFormateur(isPoleScoped ? (item as FormateurItem).user : (item as UserItem))" class="text-sky-600 hover:text-sky-900" title="Voir">
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -106,9 +112,9 @@
             </table>
           </div>
 
-          <div v-if="filteredFormateurs.length > 0" class="flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div v-if="(isPoleScoped ? totalCount : filteredFormateurs.length) > 0" class="flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p class="text-sm font-medium text-slate-600">
-              Affichage {{ paginationStart }}-{{ paginationEnd }} sur {{ filteredFormateurs.length }} formateurs
+              {{ paginationDisplay }}
             </p>
 
             <div class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white p-2 shadow-sm">
@@ -233,6 +239,15 @@ interface UserItem {
 interface PoleItem {
   id: number
   nom_pole: string
+  id_chef?: number
+}
+
+interface FormateurItem {
+  id_user: number
+  type_formateur: string
+  MHS: number
+  NBR_semaine: number
+  user: UserItem
 }
 
 interface PoleFormateurResponse {
@@ -248,10 +263,15 @@ const isSidebarOpen = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
-const formateurs = ref<UserItem[]>([])
+const formateurs = ref<UserItem[] | FormateurItem[]>([])
 const poleByUserId = ref<Record<number, string[]>>({})
 const currentPage = ref(1)
 const pageSize = 10
+const totalCount = ref(0)
+const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
+const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
+const isPoleScoped = computed(() => isFormateur.value || isChefPole.value)
+const userPoleId = ref<number | null>(null)
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -277,37 +297,74 @@ const filteredFormateurs = computed(() => {
   if (!searchQuery.value.trim()) return formateurs.value
 
   const query = searchQuery.value.toLowerCase()
-  return formateurs.value.filter((formateur) => {
-    const poles = getPoleNames(formateur.id).join(' ').toLowerCase()
-    return (
-      formateur.nom.toLowerCase().includes(query) ||
-      formateur.prenom.toLowerCase().includes(query) ||
-      formateur.email.toLowerCase().includes(query) ||
-      (formateur.matricule || '').toLowerCase().includes(query) ||
-      poles.includes(query)
-    )
-  })
+  
+  if (isPoleScoped.value) {
+    // For formateur viewing their own pole members
+    return (formateurs.value as FormateurItem[]).filter((item: any) => {
+      const user = item.user || item
+      return (
+        user.nom?.toLowerCase().includes(query) ||
+        user.prenom?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
+        (user.matricule || '').toLowerCase().includes(query)
+      )
+    })
+  } else {
+    // For admin/director viewing all formateurs
+    return (formateurs.value as UserItem[]).filter((formateur) => {
+      const poles = getPoleNames(formateur.id).join(' ').toLowerCase()
+      return (
+        formateur.nom.toLowerCase().includes(query) ||
+        formateur.prenom.toLowerCase().includes(query) ||
+        formateur.email.toLowerCase().includes(query) ||
+        (formateur.matricule || '').toLowerCase().includes(query) ||
+        poles.includes(query)
+      )
+    })
+  }
 })
 
 const totalPages = computed(() => {
-  const total = Math.ceil(filteredFormateurs.value.length / pageSize)
-  return total > 0 ? total : 1
+  if (isPoleScoped.value) {
+    // Backend pagination for formateur
+    return Math.ceil(totalCount.value / pageSize)
+  } else {
+    // Frontend pagination for admin/director
+    const total = Math.ceil(filteredFormateurs.value.length / pageSize)
+    return total > 0 ? total : 1
+  }
 })
 
 const paginatedFormateurs = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  return filteredFormateurs.value.slice(start, end)
+  if (isPoleScoped.value) {
+    // Already paginated from backend
+    return formateurs.value
+  } else {
+    // Frontend pagination
+    const start = (currentPage.value - 1) * pageSize
+    const end = start + pageSize
+    return filteredFormateurs.value.slice(start, end)
+  }
 })
 
 const paginationStart = computed(() => {
-  if (filteredFormateurs.value.length === 0) return 0
-  return (currentPage.value - 1) * pageSize + 1
+  if (isPoleScoped.value) {
+    if (totalCount.value === 0) return 0
+    return (currentPage.value - 1) * pageSize + 1
+  } else {
+    if (filteredFormateurs.value.length === 0) return 0
+    return (currentPage.value - 1) * pageSize + 1
+  }
 })
 
 const paginationEnd = computed(() => {
-  if (filteredFormateurs.value.length === 0) return 0
-  return Math.min(currentPage.value * pageSize, filteredFormateurs.value.length)
+  if (isPoleScoped.value) {
+    if (totalCount.value === 0) return 0
+    return Math.min(currentPage.value * pageSize, totalCount.value)
+  } else {
+    if (filteredFormateurs.value.length === 0) return 0
+    return Math.min(currentPage.value * pageSize, filteredFormateurs.value.length)
+  }
 })
 
 const paginationItems = computed<(number | '...')[]>(() => {
@@ -339,6 +396,14 @@ const paginationItems = computed<(number | '...')[]>(() => {
   return items
 })
 
+const paginationDisplay = computed(() => {
+  if (isPoleScoped.value) {
+    return `Affichage ${paginationStart.value}-${paginationEnd.value} sur ${totalCount.value} formateurs`
+  } else {
+    return `Affichage ${paginationStart.value}-${paginationEnd.value} sur ${filteredFormateurs.value.length} formateurs`
+  }
+})
+
 const goToPage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
@@ -359,6 +424,13 @@ watch(searchQuery, () => {
 watch(filteredFormateurs, () => {
   if (currentPage.value > totalPages.value) {
     currentPage.value = totalPages.value
+  }
+})
+
+watch(currentPage, async () => {
+  if (isPoleScoped.value) {
+    // Reload data when page changes for formateur view
+    await loadFormateurs()
   }
 })
 
@@ -384,43 +456,94 @@ const loadFormateurs = async () => {
   error.value = null
 
   try {
-    const [usersRes, polesRes] = await Promise.all([
-      api.get<UserItem[]>('/users'),
-      api.get<PoleItem[]>('/poles'),
-    ])
+    if (isFormateur.value) {
+      // Resolve current formateur pole, then fetch pole formateurs using the generic pole endpoint.
+      const polesRes = await api.get<PoleItem[]>('/poles')
+      const poles = extractArray<PoleItem>(polesRes)
+      const currentUserId = authStore.user?.id
 
-    const users = extractArray<UserItem>(usersRes)
-    const poles = extractArray<PoleItem>(polesRes)
+      userPoleId.value = null
 
-    formateurs.value = users.filter((user) => user.role === 'FORMATEUR')
-
-    const poleRequests = poles.map((pole) => api.get<PoleFormateurResponse>(`/poles/${pole.id}/formateurs`))
-    const poleResponses = await Promise.all(poleRequests)
-
-    const mapping: Record<number, string[]> = {}
-
-    for (let i = 0; i < poles.length; i += 1) {
-      const pole = poles[i]
-      const response = poleResponses[i]
-
-      if (!pole || !response) continue
-
-      const entries = extractArray<{ id?: number; id_user?: number; user?: { id?: number } }>(response)
-      entries.forEach((entry) => {
-        const userId = entry.id_user ?? entry.user?.id
-        if (!userId) return
-
-        if (!mapping[userId]) {
-          mapping[userId] = []
+      for (const pole of poles) {
+        const poleRes = await api.get<any>(`/poles/${pole.id}/formateurs`)
+        const entries = extractArray<FormateurItem>(poleRes)
+        const belongsToPole = entries.some((entry) => entry.id_user === currentUserId)
+        if (belongsToPole) {
+          userPoleId.value = pole.id
+          break
         }
+      }
 
-        if (!mapping[userId].includes(pole.nom_pole)) {
-          mapping[userId].push(pole.nom_pole)
-        }
+      if (!userPoleId.value) {
+        formateurs.value = []
+        totalCount.value = 0
+        return
+      }
+
+      const offset = (currentPage.value - 1) * pageSize
+      const pagedResponse = await api.get<any>(`/poles/${userPoleId.value}/formateurs`, {
+        limit: pageSize,
+        offset,
       })
-    }
+      formateurs.value = extractArray<FormateurItem>(pagedResponse)
 
-    poleByUserId.value = mapping
+      const allResponse = await api.get<any>(`/poles/${userPoleId.value}/formateurs`)
+      totalCount.value = extractArray<FormateurItem>(allResponse).length
+    } else if (isChefPole.value) {
+      const offset = (currentPage.value - 1) * pageSize
+      const response = await api.get<any>('/my-poles-formateurs', {
+        limit: pageSize,
+        offset,
+      })
+
+      if (response && (response as any).pole_id) {
+        userPoleId.value = (response as any).pole_id
+      }
+
+      formateurs.value = extractArray<FormateurItem>(response)
+
+      const allResponse = await api.get<any>('/my-poles-formateurs')
+      totalCount.value = extractArray<FormateurItem>(allResponse).length
+    } else {
+      // For admin/director: load all formateurs with frontend pagination
+      const [usersRes, polesRes] = await Promise.all([
+        api.get<UserItem[]>('/users'),
+        api.get<PoleItem[]>('/poles'),
+      ])
+
+      const users = extractArray<UserItem>(usersRes)
+      const poles = extractArray<PoleItem>(polesRes)
+
+      formateurs.value = users.filter((user) => user.role === 'FORMATEUR')
+
+      const poleRequests = poles.map((pole) => api.get<any>(`/poles/${pole.id}/formateurs`))
+      const poleResponses = await Promise.all(poleRequests)
+
+      const mapping: Record<number, string[]> = {}
+
+      for (let i = 0; i < poles.length; i += 1) {
+        const pole = poles[i]
+        const response = poleResponses[i]
+
+        if (!pole || !response) continue
+
+        const entries = extractArray<any>(response)
+        entries.forEach((entry: any) => {
+          const userId = entry.id_user ?? entry.user?.id
+          if (!userId) return
+
+          if (!mapping[userId]) {
+            mapping[userId] = []
+          }
+
+          if (!mapping[userId].includes(pole.nom_pole)) {
+            mapping[userId].push(pole.nom_pole)
+          }
+        })
+      }
+
+      poleByUserId.value = mapping
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des formateurs'
     console.error('Error loading formateurs:', err)
