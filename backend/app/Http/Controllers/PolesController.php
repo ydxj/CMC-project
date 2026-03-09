@@ -10,16 +10,48 @@ use Illuminate\Support\Facades\Log;
 
 class PolesController extends Controller
 {
+    private function getChefPoleIds($user)
+    {
+        if (!$user || $user->role !== 'CHEF_POLE') {
+            return null;
+        }
+
+        return Pole::where('id_chef', $user->id)->pluck('id');
+    }
+
+    private function ensureChefCanAccessPole(Request $request, int $poleId)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'CHEF_POLE') {
+            return null;
+        }
+
+        $chefPoleIds = $this->getChefPoleIds($user);
+        if (!$chefPoleIds || !$chefPoleIds->contains($poleId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: this pole does not belong to you',
+            ], 403);
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
+        $user = $request->user();
         $limit = $request->query('limit');
         $offset = $request->query('offset');
 
-        if ($limit === null && $offset === null) {
-            return response()->json(Pole::with('chef')->get());
+        $query = Pole::with('chef');
+
+        if ($user && $user->role === 'CHEF_POLE') {
+            $query->where('id_chef', $user->id);
         }
 
-        $query = Pole::with('chef');
+        if ($limit === null && $offset === null) {
+            return response()->json($query->get());
+        }
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
@@ -99,6 +131,11 @@ class PolesController extends Controller
     public function getFormateurs(Request $request, $id)
     {
         try {
+            $accessDenied = $this->ensureChefCanAccessPole($request, (int) $id);
+            if ($accessDenied) {
+                return $accessDenied;
+            }
+
             $pole = Pole::find($id);
 
             if (!$pole) {
@@ -339,6 +376,11 @@ class PolesController extends Controller
 
     public function getSalles($id)
     {
+        $accessDenied = $this->ensureChefCanAccessPole(request(), (int) $id);
+        if ($accessDenied) {
+            return $accessDenied;
+        }
+
         $pole = Pole::find($id);
 
         if (!$pole) {
@@ -358,6 +400,11 @@ class PolesController extends Controller
 
     public function getFilieres($id)
     {
+        $accessDenied = $this->ensureChefCanAccessPole(request(), (int) $id);
+        if ($accessDenied) {
+            return $accessDenied;
+        }
+
         $pole = Pole::find($id);
 
         if (!$pole) {

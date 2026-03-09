@@ -181,8 +181,8 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Groupes',
         items: [
-          { label: 'Liste des groupes', path: '/groupes', icon: 'group' },
-          { label: 'Ajouter groupe', path: '/groupes/create', icon: 'group' },
+          { label: 'Liste des groupes', path: '/chef/groupes', icon: 'group' },
+          { label: 'Ajouter groupe', path: '/chef/groupes/create', icon: 'group' },
         ],
       },
       {

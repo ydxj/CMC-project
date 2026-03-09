@@ -3,20 +3,58 @@
 namespace App\Http\Controllers;
 
 use App\Models\Module;
+use App\Models\Pole;
+use App\Models\Filiere;
 use Illuminate\Http\Request;
 
 class ModulesController extends Controller
 {
+    private function getChefPoleIds($user)
+    {
+        if (!$user || $user->role !== 'CHEF_POLE') {
+            return null;
+        }
+
+        return Pole::where('id_chef', $user->id)->pluck('id');
+    }
+
+    private function validateChefFiliereAccess(Request $request, int $filiereId)
+    {
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds === null) {
+            return null;
+        }
+
+        $ownsFiliere = Filiere::where('id', $filiereId)
+            ->whereIn('id_pole', $chefPoleIds)
+            ->exists();
+
+        if (!$ownsFiliere) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: this filiere does not belong to your pole',
+            ], 403);
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
+        $query = Module::query()->with(['filiere.pole']);
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds !== null) {
+            $query->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds);
+            });
+        }
+
         $limit = $request->query('limit');
         $offset = $request->query('offset');
 
         if ($limit === null && $offset === null) {
-            return response()->json(Module::all());
+            return response()->json($query->get());
         }
-
-        $query = Module::query();
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
@@ -37,6 +75,11 @@ class ModulesController extends Controller
             'id_formation' => 'required|integer|exists:filieres,id',
             'id_filiere' => 'required|integer|exists:filieres,id',
         ]);
+
+        $accessDenied = $this->validateChefFiliereAccess($request, (int) $data['id_filiere']);
+        if ($accessDenied) {
+            return $accessDenied;
+        }
 
         Module::create([
             'nom_module' => $data['nom_module'],
@@ -65,11 +108,22 @@ class ModulesController extends Controller
             ], 404);
         }
 
+        $existingAccessDenied = $this->validateChefFiliereAccess($request, (int) $module->id_filiere);
+        if ($existingAccessDenied) {
+            return $existingAccessDenied;
+        }
+
         $data = $request->validate([
             'nom_module' => 'sometimes|required|string|max:150',
             'volume_horaire' => 'sometimes|required|integer|min:1',
             'id_filiere' => 'sometimes|required|integer|exists:filieres,id',
         ]);
+
+        $targetFiliereId = isset($data['id_filiere']) ? (int) $data['id_filiere'] : (int) $module->id_filiere;
+        $targetAccessDenied = $this->validateChefFiliereAccess($request, $targetFiliereId);
+        if ($targetAccessDenied) {
+            return $targetAccessDenied;
+        }
 
         $module->update([
             'nom_module' => $data['nom_module'] ?? $module->nom_module,
@@ -85,6 +139,7 @@ class ModulesController extends Controller
 
     public function destroy($id)
     {
+        $request = request();
         $module = Module::find($id);
 
         if (!$module) {
@@ -92,6 +147,11 @@ class ModulesController extends Controller
                 'success' => false,
                 'message' => 'Module not found',
             ], 404);
+        }
+
+        $accessDenied = $this->validateChefFiliereAccess($request, (int) $module->id_filiere);
+        if ($accessDenied) {
+            return $accessDenied;
         }
 
         $module->delete();
