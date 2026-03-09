@@ -174,8 +174,8 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Filieres',
         items: [
-          { label: 'Liste des filieres', path: '/filieres', icon: 'book' },
-          { label: 'Ajouter filiere', path: '/filieres/add', icon: 'book' },
+          { label: 'Liste des filieres', path: '/chef/filieres', icon: 'book' },
+          { label: 'Ajouter filiere', path: '/chef/filieres/create', icon: 'book' },
         ],
       },
       {
