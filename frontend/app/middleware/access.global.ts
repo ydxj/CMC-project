@@ -4,9 +4,9 @@ import { useAuthStore } from '../../stores/auth'
 type RoleKey = 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
 
 const roleRoutePrefixes: Record<RoleKey, string[]> = {
-  DIRECTEUR: ['/dashboard', '/users', '/poles', '/salles', '/formateurs', '/filieres'],
-  CHEF_POLE: ['/dashboard', '/chef', '/salles'],
-  FORMATEUR: ['/dashboard'],
+  DIRECTEUR: ['/dashboard', '/users', '/poles', '/salles', '/formateurs', '/filieres', '/settings'],
+  CHEF_POLE: ['/dashboard', '/chef', '/salles', '/settings'],
+  FORMATEUR: ['/dashboard', '/settings'],
 }
 
 const isAllowedPath = (path: string, prefixes: string[]) => {
