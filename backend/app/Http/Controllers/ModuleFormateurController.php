@@ -2,18 +2,87 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Formateur;
+use App\Models\Groupe;
+use App\Models\Module;
 use App\Models\ModuleGroupeFormateur;
+use App\Models\Pole;
 use Illuminate\Http\Request;
 
 class ModuleFormateurController extends Controller
 {
+    private function getChefPoleIds($user)
+    {
+        if (!$user || $user->role !== 'CHEF_POLE') {
+            return null;
+        }
+
+        return Pole::where('id_chef', $user->id)->pluck('id');
+    }
+
+    private function applyChefScopeToAssignments($query, $user)
+    {
+        $chefPoleIds = $this->getChefPoleIds($user);
+        if ($chefPoleIds === null) {
+            return $query;
+        }
+
+        return $query
+            ->whereHas('module.filiere', function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds);
+            })
+            ->whereHas('groupe.filiere', function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds);
+            })
+            ->whereHas('formateur.poles', function ($q) use ($chefPoleIds) {
+                $q->whereIn('poles.id', $chefPoleIds);
+            });
+    }
+
+    private function validateChefModuleGroupeFormateur(Request $request, int $moduleId, int $groupeId, int $formateurId)
+    {
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds === null) {
+            return null;
+        }
+
+        $moduleAllowed = Module::where('id', $moduleId)
+            ->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds);
+            })
+            ->exists();
+
+        $groupeAllowed = Groupe::where('id', $groupeId)
+            ->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds);
+            })
+            ->exists();
+
+        $formateurAllowed = Formateur::where('id', $formateurId)
+            ->whereHas('poles', function ($q) use ($chefPoleIds) {
+                $q->whereIn('poles.id', $chefPoleIds);
+            })
+            ->exists();
+
+        if (!$moduleAllowed || !$groupeAllowed || !$formateurAllowed) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: assignment data is outside your pole scope',
+            ], 403);
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
         $limit = $request->query('limit');
         $offset = $request->query('offset');
 
         $query = ModuleGroupeFormateur::query()
-            ->with(['module', 'groupe', 'formateur']);
+            ->with(['module', 'groupe', 'formateur.user']);
+
+        $query = $this->applyChefScopeToAssignments($query, $request->user());
 
         if ($request->has('id_module')) {
             $query->where('id_module', $request->query('id_module'));
@@ -46,6 +115,16 @@ class ModuleFormateurController extends Controller
             'id_groupe' => 'required|integer|exists:groupes,id',
         ]);
 
+        $accessDenied = $this->validateChefModuleGroupeFormateur(
+            $request,
+            (int) $data['id_module'],
+            (int) $data['id_groupe'],
+            (int) $data['id_formateur']
+        );
+        if ($accessDenied) {
+            return $accessDenied;
+        }
+
         $assignment = ModuleGroupeFormateur::firstOrCreate([
             'id_module' => $data['id_module'],
             'id_groupe' => $data['id_groupe'],
@@ -65,7 +144,10 @@ class ModuleFormateurController extends Controller
 
     public function update(Request $request, $id)
     {
-        $assignment = ModuleGroupeFormateur::find($id);
+        $baseQuery = ModuleGroupeFormateur::query()->with(['module.filiere', 'groupe.filiere', 'formateur.poles']);
+        $baseQuery = $this->applyChefScopeToAssignments($baseQuery, $request->user());
+
+        $assignment = $baseQuery->where('id', $id)->first();
 
         if (!$assignment) {
             return response()->json([
@@ -80,21 +162,33 @@ class ModuleFormateurController extends Controller
             'id_groupe' => 'sometimes|required|integer|exists:groupes,id',
         ]);
 
+        $targetModuleId = isset($data['id_module']) ? (int) $data['id_module'] : (int) $assignment->id_module;
+        $targetGroupeId = isset($data['id_groupe']) ? (int) $data['id_groupe'] : (int) $assignment->id_groupe;
+        $targetFormateurId = isset($data['id_formateur']) ? (int) $data['id_formateur'] : (int) $assignment->id_formateur;
+
+        $accessDenied = $this->validateChefModuleGroupeFormateur($request, $targetModuleId, $targetGroupeId, $targetFormateurId);
+        if ($accessDenied) {
+            return $accessDenied;
+        }
+
         $assignment->update([
-            'id_module' => $data['id_module'] ?? $assignment->id_module,
-            'id_groupe' => $data['id_groupe'] ?? $assignment->id_groupe,
-            'id_formateur' => $data['id_formateur'] ?? $assignment->id_formateur,
+            'id_module' => $targetModuleId,
+            'id_groupe' => $targetGroupeId,
+            'id_formateur' => $targetFormateurId,
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $assignment->load(['module', 'groupe', 'formateur']),
+            'data' => $assignment->load(['module', 'groupe', 'formateur.user']),
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $assignment = ModuleGroupeFormateur::find($id);
+        $baseQuery = ModuleGroupeFormateur::query();
+        $baseQuery = $this->applyChefScopeToAssignments($baseQuery, $request->user());
+
+        $assignment = $baseQuery->where('id', $id)->first();
 
         if (!$assignment) {
             return response()->json([
@@ -113,7 +207,7 @@ class ModuleFormateurController extends Controller
 
     public function getFormateurModules(Request $request, $id_formateur)
     {
-        $formateur = \App\Models\Formateur::find($id_formateur);
+        $formateur = Formateur::find($id_formateur);
 
         if (!$formateur) {
             return response()->json([
@@ -122,20 +216,32 @@ class ModuleFormateurController extends Controller
             ], 404);
         }
 
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds !== null) {
+            $allowed = $formateur->poles()->whereIn('poles.id', $chefPoleIds)->exists();
+            if (!$allowed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: this formateur does not belong to your pole',
+                ], 403);
+            }
+        }
+
         $assignments = ModuleGroupeFormateur::where('id_formateur', $id_formateur)
-            ->with(['module', 'groupe'])
-            ->get();
+            ->with(['module', 'groupe']);
+
+        $assignments = $this->applyChefScopeToAssignments($assignments, $request->user());
 
         return response()->json([
             'success' => true,
             'formateur_id' => $id_formateur,
-            'data' => $assignments,
+            'data' => $assignments->get(),
         ]);
     }
 
     public function getModuleFormateurs(Request $request, $id_module)
     {
-        $module = \App\Models\Module::find($id_module);
+        $module = Module::find($id_module);
 
         if (!$module) {
             return response()->json([
@@ -144,20 +250,36 @@ class ModuleFormateurController extends Controller
             ], 404);
         }
 
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds !== null) {
+            $allowed = Module::where('id', $id_module)
+                ->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                    $q->whereIn('id_pole', $chefPoleIds);
+                })->exists();
+
+            if (!$allowed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: this module does not belong to your pole',
+                ], 403);
+            }
+        }
+
         $assignments = ModuleGroupeFormateur::where('id_module', $id_module)
-            ->with(['formateur', 'groupe'])
-            ->get();
+            ->with(['formateur.user', 'groupe']);
+
+        $assignments = $this->applyChefScopeToAssignments($assignments, $request->user());
 
         return response()->json([
             'success' => true,
             'module_id' => $id_module,
-            'data' => $assignments,
+            'data' => $assignments->get(),
         ]);
     }
 
     public function getGroupeModules(Request $request, $id_groupe)
     {
-        $groupe = \App\Models\Groupe::find($id_groupe);
+        $groupe = Groupe::find($id_groupe);
 
         if (!$groupe) {
             return response()->json([
@@ -166,14 +288,30 @@ class ModuleFormateurController extends Controller
             ], 404);
         }
 
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds !== null) {
+            $allowed = Groupe::where('id', $id_groupe)
+                ->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                    $q->whereIn('id_pole', $chefPoleIds);
+                })->exists();
+
+            if (!$allowed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: this groupe does not belong to your pole',
+                ], 403);
+            }
+        }
+
         $assignments = ModuleGroupeFormateur::where('id_groupe', $id_groupe)
-            ->with(['module', 'formateur'])
-            ->get();
+            ->with(['module', 'formateur.user']);
+
+        $assignments = $this->applyChefScopeToAssignments($assignments, $request->user());
 
         return response()->json([
             'success' => true,
             'groupe_id' => $id_groupe,
-            'data' => $assignments,
+            'data' => $assignments->get(),
         ]);
     }
 }

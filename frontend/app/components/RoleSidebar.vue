@@ -188,9 +188,9 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Modules',
         items: [
-          { label: 'Liste des modules', path: '/modules', icon: 'module' },
-          { label: 'Ajouter module', path: '/modules/create', icon: 'module' },
-          { label: 'Assigner a formateur', path: '/modules/assign', icon: 'link' },
+          { label: 'Liste des modules', path: '/chef/modules', icon: 'module' },
+          { label: 'Ajouter module', path: '/chef/modules/create', icon: 'module' },
+          { label: 'Assigner a formateur', path: '/chef/modules/assign', icon: 'link' },
         ],
       },
       {
