@@ -196,7 +196,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Salles & Ateliers',
         items: [
-          { label: 'Liste des salles', path: '/salles', icon: 'door' },
+          { label: 'Liste des salles', path: '/chef/salles', icon: 'door' },
         ],
       },
       {
