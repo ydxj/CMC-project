@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('modules', ModulesController::class);
 
     // Schedule routes
+    Route::get('me/emploi-du-temps', [EmploiDuTempsController::class, 'getMyWeeklySchedule']);
     Route::get('emploi-du-temps/weekly', [EmploiDuTempsController::class, 'getWeeklySchedule']);
     Route::get('emploi-du-temps/formateur/{id}', [EmploiDuTempsController::class, 'getByFormateur']);
     Route::get('emploi-du-temps/groupe/{id}', [EmploiDuTempsController::class, 'getByGroupe']);

@@ -232,4 +232,43 @@ class EmploiDuTempsController extends Controller
             'data' => $schedules,
         ]);
     }
+
+    public function getMyWeeklySchedule(Request $request)
+    {
+        $user = $request->user();
+
+        $formateur = \App\Models\Formateur::where('id_user', $user->id)->first();
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No formateur profile found for current user',
+            ], 404);
+        }
+
+        $data = $request->validate([
+            'start_date' => 'required|date',
+        ]);
+
+        $date = \Carbon\Carbon::parse($data['start_date']);
+        $monday = $date->copy()->startOfWeek(\Carbon\Carbon::MONDAY);
+        $saturday = $monday->copy()->addDays(5);
+
+        $schedules = EmploiDuTemps::whereBetween('date_seance', [$monday->format('Y-m-d'), $saturday->format('Y-m-d')])
+            ->whereHas('moduleGroupeFormateur', function ($q) use ($formateur) {
+                $q->where('id_formateur', $formateur->id);
+            })
+            ->with(['moduleGroupeFormateur.groupe', 'moduleGroupeFormateur.module', 'salle'])
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'week' => [
+                'start' => $monday->format('Y-m-d'),
+                'end' => $saturday->format('Y-m-d'),
+            ],
+            'data' => $schedules,
+        ]);
+    }
 }

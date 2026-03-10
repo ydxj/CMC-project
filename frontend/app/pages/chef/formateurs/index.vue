@@ -65,7 +65,7 @@
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Ajouter formateur
+            Mutualiser formateur
           </button>
         </div>
 
@@ -305,8 +305,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApi } from '../../../composables/useApi'
-import { useAuthStore } from '../../../stores/auth'
+import { useApi } from '../../../../composables/useApi'
+import { useAuthStore } from '../../../../stores/auth'
 
 definePageMeta({
   middleware: ['auth']

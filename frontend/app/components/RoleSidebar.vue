@@ -218,8 +218,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Mon Emploi du Temps',
         items: [
-          { label: 'Vue hebdomadaire', path: '/emploi-du-temps?view=week', icon: 'table' },
-          { label: 'Vue mensuelle', path: '/emploi-du-temps?view=month', icon: 'month' },
+          { label: 'Vue hebdomadaire', path: '/formateur/emploi-temps', icon: 'table' },
         ],
       },
       {
