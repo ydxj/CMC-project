@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmploiDuTempsController;
 use App\Http\Controllers\FiliersController;
 use App\Http\Controllers\GroupesController;
@@ -20,6 +21,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+
+    Route::get('/dashboard/stats', [DashboardController::class, 'getStats']);
 
     Route::resource('users', UsersController::class);
     Route::resource('poles', PolesController::class);

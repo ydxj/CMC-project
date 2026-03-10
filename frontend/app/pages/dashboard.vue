@@ -269,6 +269,7 @@ const stats = reactive({
   salles: '--' as string | number,
   formateurs: '--' as string | number,
   modules: '--' as string | number,
+  groupes: '--' as string | number,
 })
 
 const formateurOverview = reactive({
@@ -332,7 +333,7 @@ const statCards = computed(() => {
   if (isFormateur.value) {
     return [
       { key: 'modules', label: 'Mes Modules', value: stats.modules, description: 'Modules assignes' },
-      { key: 'groupes', label: 'Mes Groupes', value: stats.formateurs, description: 'Groupes enseignes' },
+      { key: 'groupes', label: 'Mes Groupes', value: stats.groupes, description: 'Groupes enseignes' },
       { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Nom du pole d appartenance' },
       { key: 'assignments', label: 'Seances', value: stats.salles, description: 'Affectations actives' },
     ]
@@ -361,111 +362,21 @@ const loadDashboardStats = async () => {
   loadingStats.value = true
 
   try {
-    const role = authStore.user.role
-    const userId = authStore.user.id
+    const response = await api.get<any>('/dashboard/stats')
+    const data = response.stats || response.data?.stats || response
 
-    if (role === 'DIRECTEUR') {
-      const [polesRes, sallesRes, usersRes, modulesRes] = await Promise.all([
-        api.get<PoleItem[]>('/poles'),
-        api.get<SalleItem[]>('/salles'),
-        api.get<UserItem[]>('/users'),
-        api.get<ModuleItem[]>('/modules'),
-      ])
+    stats.poles = data.poles ?? '--'
+    stats.salles = data.salles ?? '--'
+    stats.formateurs = data.formateurs ?? '--'
+    stats.modules = data.modules ?? '--'
+    stats.groupes = data.groupes ?? '--'
 
-      const poles = extractArray<PoleItem>(polesRes)
-      const salles = extractArray<SalleItem>(sallesRes)
-      const users = extractArray<UserItem>(usersRes)
-      const modules = extractArray<ModuleItem>(modulesRes)
-
-      stats.poles = poles.length
-      stats.salles = salles.length
-      stats.formateurs = users.filter((user) => user.role === 'FORMATEUR').length
-      stats.modules = modules.length
-      return
+    // For formateur, also load overview data
+    if (authStore.user?.role === 'FORMATEUR' && response.overview) {
+      formateurOverview.modules = response.overview.modules || []
+      formateurOverview.groupes = response.overview.groupes || []
+      formateurOverview.poles = response.overview.poles || []
     }
-
-    if (role === 'CHEF_POLE') {
-      const [polesRes, sallesRes, filieresRes, modulesRes] = await Promise.all([
-        api.get<PoleItem[]>('/poles'),
-        api.get<SalleItem[]>('/salles'),
-        api.get<FiliereItem[]>('/filiers'),
-        api.get<ModuleItem[]>('/modules'),
-      ])
-
-      const poles = extractArray<PoleItem>(polesRes).filter((pole) => pole.id_chef === userId)
-      const poleIds = new Set(poles.map((pole) => pole.id))
-
-      const salles = extractArray<SalleItem>(sallesRes).filter((salle) => {
-        return typeof salle.id_pole === 'number' && poleIds.has(salle.id_pole)
-      })
-
-      const filieres = extractArray<FiliereItem>(filieresRes).filter((filiere) => {
-        return typeof filiere.id_pole === 'number' && poleIds.has(filiere.id_pole)
-      })
-
-      const filiereIds = new Set(filieres.map((filiere) => filiere.id))
-      const modules = extractArray<ModuleItem>(modulesRes).filter((moduleItem) => {
-        return typeof moduleItem.id_filiere === 'number' && filiereIds.has(moduleItem.id_filiere)
-      })
-
-      const formateursByPole = await Promise.all(
-        poles.map((pole) => api.get<{ success: boolean; data: FormateurItem[] }>(`/poles/${pole.id}/formateurs`))
-      )
-      const allFormateurs = formateursByPole.flatMap((response) => extractArray<FormateurItem>(response))
-      const poleNames = Array.from(new Set(poles.map((pole) => pole.nom_pole).filter(Boolean) as string[]))
-
-      stats.poles = poleNames.length > 0 ? poleNames.join(' / ') : '--'
-      stats.salles = salles.length
-      stats.formateurs = getUniqueCount(allFormateurs.map((formateur) => formateur.id))
-      stats.modules = modules.length
-      return
-    }
-
-    const polesRes = await api.get<PoleItem[]>('/poles')
-    const poles = extractArray<PoleItem>(polesRes)
-
-    const perPoleFormateurs = await Promise.all(
-      poles.map((pole) => api.get<{ success: boolean; data: FormateurItem[] }>(`/poles/${pole.id}/formateurs`))
-    )
-
-    const relatedFormateurs: FormateurItem[] = []
-    const relatedPoles: PoleItem[] = []
-
-    for (let i = 0; i < poles.length; i += 1) {
-      const pole = poles[i]
-      if (!pole) {
-        continue
-      }
-
-      const poleFormateurs = extractArray<FormateurItem>(perPoleFormateurs[i])
-      const matchesPole = poleFormateurs.some((formateur) => {
-        return formateur.id_user === userId || formateur.user?.id === userId
-      })
-
-      if (matchesPole) {
-        relatedPoles.push(pole)
-        relatedFormateurs.push(...poleFormateurs.filter((formateur) => formateur.id_user === userId || formateur.user?.id === userId))
-      }
-    }
-
-    const formateurIds = Array.from(new Set(relatedFormateurs.map((formateur) => formateur.id)))
-    const assignmentsResponses = await Promise.all(
-      formateurIds.map((id) => api.get<{ success: boolean; data: ModuleAssignment[] }>(`/formateur/${id}/modules`))
-    )
-    const assignments = assignmentsResponses.flatMap((response) => extractArray<ModuleAssignment>(response))
-
-    const moduleNames = Array.from(new Set(assignments.map((assignment) => assignment.module?.nom_module).filter(Boolean) as string[]))
-    const groupeNames = Array.from(new Set(assignments.map((assignment) => assignment.groupe?.nom_groupe).filter(Boolean) as string[]))
-    const poleNames = Array.from(new Set(relatedPoles.map((pole) => pole.nom_pole).filter(Boolean) as string[]))
-
-    formateurOverview.modules = moduleNames
-    formateurOverview.groupes = groupeNames
-    formateurOverview.poles = poleNames
-
-    stats.modules = moduleNames.length
-    stats.formateurs = groupeNames.length
-    stats.poles = poleNames.length > 0 ? poleNames.join(' / ') : '--'
-    stats.salles = assignments.length
   } catch (error) {
     console.error('Dashboard stats error:', error)
   } finally {
