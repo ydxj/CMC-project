@@ -270,6 +270,7 @@ const stats = reactive({
   formateurs: '--' as string | number,
   modules: '--' as string | number,
   groupes: '--' as string | number,
+  assignments: '--' as string | number,
 })
 
 const formateurOverview = reactive({
@@ -335,7 +336,7 @@ const statCards = computed(() => {
       { key: 'modules', label: 'Mes Modules', value: stats.modules, description: 'Modules assignes' },
       { key: 'groupes', label: 'Mes Groupes', value: stats.groupes, description: 'Groupes enseignes' },
       { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Nom du pole d appartenance' },
-      { key: 'assignments', label: 'Seances', value: stats.salles, description: 'Affectations actives' },
+      { key: 'assignments', label: 'Seances', value: stats.assignments, description: 'Affectations actives' },
     ]
   }
 
@@ -370,6 +371,7 @@ const loadDashboardStats = async () => {
     stats.formateurs = data.formateurs ?? '--'
     stats.modules = data.modules ?? '--'
     stats.groupes = data.groupes ?? '--'
+    stats.assignments = data.assignments ?? '--'
 
     // For formateur, also load overview data
     if (authStore.user?.role === 'FORMATEUR' && response.overview) {
