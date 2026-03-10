@@ -314,4 +314,58 @@ class ModuleFormateurController extends Controller
             'data' => $assignments->get(),
         ]);
     }
+
+    public function getMyGroupes(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated',
+            ], 401);
+        }
+
+        $formateur = Formateur::where('id_user', $user->id)->first();
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No formateur profile found for current user',
+            ], 404);
+        }
+
+        $assignments = ModuleGroupeFormateur::where('id_formateur', $formateur->id)
+            ->with(['groupe.filiere.pole'])
+            ->get();
+
+        $groupes = $assignments
+            ->map(function ($assignment) {
+                return $assignment->groupe;
+            })
+            ->filter()
+            ->unique('id')
+            ->values()
+            ->map(function ($groupe) {
+                return [
+                    'id' => $groupe->id,
+                    'nom_groupe' => $groupe->nom_groupe,
+                    'annee' => $groupe->annee,
+                    'niveau' => $groupe->niveau,
+                    'creneau' => $groupe->creneau,
+                    'filiere' => $groupe->filiere ? [
+                        'id' => $groupe->filiere->id,
+                        'nom_filiere' => $groupe->filiere->nom_filiere,
+                        'pole' => $groupe->filiere->pole ? [
+                            'id' => $groupe->filiere->pole->id,
+                            'nom_pole' => $groupe->filiere->pole->nom_pole,
+                        ] : null,
+                    ] : null,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'formateur_id' => $formateur->id,
+            'data' => $groupes,
+        ]);
+    }
 }

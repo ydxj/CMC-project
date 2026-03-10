@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('poles/{id}/filieres', [PolesController::class, 'getFilieres']);
 
     Route::resource('module-formateur', ModuleFormateurController::class);
+    Route::get('me/groupes', [ModuleFormateurController::class, 'getMyGroupes']);
     Route::get('formateur/{id_formateur}/modules', [ModuleFormateurController::class, 'getFormateurModules']);
     Route::get('module/{id_module}/formateurs', [ModuleFormateurController::class, 'getModuleFormateurs']);
     Route::get('groupe/{id_groupe}/modules', [ModuleFormateurController::class, 'getGroupeModules']);

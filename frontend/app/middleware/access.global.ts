@@ -6,7 +6,7 @@ type RoleKey = 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
 const roleRoutePrefixes: Record<RoleKey, string[]> = {
   DIRECTEUR: ['/dashboard', '/users', '/poles', '/salles', '/formateurs', '/filieres', '/settings'],
   CHEF_POLE: ['/dashboard', '/chef', '/salles', '/settings'],
-  FORMATEUR: ['/dashboard', '/settings'],
+  FORMATEUR: ['/dashboard', '/settings', '/formateur'],
 }
 
 const isAllowedPath = (path: string, prefixes: string[]) => {
