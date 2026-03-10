@@ -368,4 +368,55 @@ class ModuleFormateurController extends Controller
             'data' => $groupes,
         ]);
     }
+
+    public function getMyModules(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated',
+            ], 401);
+        }
+
+        $formateur = Formateur::where('id_user', $user->id)->first();
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No formateur profile found for current user',
+            ], 404);
+        }
+
+        $assignments = ModuleGroupeFormateur::where('id_formateur', $formateur->id)
+            ->with(['module.filiere.pole', 'groupe'])
+            ->get();
+
+        $modules = $assignments
+            ->map(function ($assignment) {
+                return [
+                    'id' => $assignment->module->id . '_' . $assignment->groupe->id,
+                    'module_id' => $assignment->module->id,
+                    'groupe_id' => $assignment->groupe->id,
+                    'nom_module' => $assignment->module->nom_module,
+                    'volume_horaire' => $assignment->module->volume_horaire,
+                    'nom_groupe' => $assignment->groupe->nom_groupe,
+                    'filiere' => $assignment->module->filiere ? [
+                        'id' => $assignment->module->filiere->id,
+                        'nom_filiere' => $assignment->module->filiere->nom_filiere,
+                        'pole' => $assignment->module->filiere->pole ? [
+                            'id' => $assignment->module->filiere->pole->id,
+                            'nom_pole' => $assignment->module->filiere->pole->nom_pole,
+                        ] : null,
+                    ] : null,
+                ];
+            })
+            ->unique('id')
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'formateur_id' => $formateur->id,
+            'data' => $modules,
+        ]);
+    }
 }

@@ -225,7 +225,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Mes Modules',
         items: [
-          { label: 'Liste des modules assignes', path: '/modules?mine=1', icon: 'module' },
+          { label: 'Liste des modules assignes', path: '/formateur/modules', icon: 'module' },
         ],
       },
       {
