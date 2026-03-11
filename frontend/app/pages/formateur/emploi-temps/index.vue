@@ -274,10 +274,10 @@ interface DayCell {
 }
 
 const TIME_SLOTS = [
-  { label: '8:30 - 10:30', start: '08:30' },
-  { label: '10:30 - 13:30', start: '10:30' },
-  { label: '13:30 - 16:30', start: '13:30' },
-  { label: '16:30 - 18:30', start: '16:30' },
+  { label: '8:30 - 11:00', start: '08:30' },
+  { label: '11:00 - 13:30', start: '11:00' },
+  { label: '13:30 - 16:00', start: '13:30' },
+  { label: '16:00 - 18:30', start: '16:00' },
 ]
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']

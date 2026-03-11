@@ -202,11 +202,9 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Emploi du Temps',
         items: [
-          { label: 'Vue du pole', path: '/emploi-du-temps', icon: 'calendar' },
-          { label: 'Creer une seance', path: '/emploi-du-temps/create', icon: 'calendar' },
-          { label: 'Par formateur', path: '/emploi-du-temps?view=formateur', icon: 'filter' },
-          { label: 'Par groupe', path: '/emploi-du-temps?view=groupe', icon: 'filter' },
-          { label: 'Par salle', path: '/emploi-du-temps?view=salle', icon: 'filter' },
+          { label: 'Vue du pole', path: '/chef/emploi-temps', icon: 'calendar' },
+          { label: 'Par formateur', path: '/chef/emploi-temps?view=formateur', icon: 'filter' },
+          { label: 'Par groupe', path: '/chef/emploi-temps?view=groupe', icon: 'filter' },
         ],
       },
     ],
