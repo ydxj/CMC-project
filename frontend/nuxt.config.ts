@@ -3,6 +3,14 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  vite: {
+    viteNode: {
+      // Avoid false timeouts on slower module transforms (Windows + large pages).
+      requestTimeout: 180000,
+      maxRetryAttempts: 8,
+    },
+  },
+
   srcDir: 'app',
   
   alias: {
