@@ -162,7 +162,7 @@
                     <div class="flex items-center justify-end gap-2">
                       <button
                         @click="openEditModal(user)"
-                        class="text-green-600 hover:text-green-900"
+                        class="text-slate-400 hover:text-green-600"
                         title="Modifier"
                       >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +171,7 @@
                       </button>
                       <button
                         @click="openDeleteModal(user)"
-                        class="text-red-600 hover:text-red-900"
+                        class="text-slate-400 hover:text-red-600"
                         title="Supprimer"
                       >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
