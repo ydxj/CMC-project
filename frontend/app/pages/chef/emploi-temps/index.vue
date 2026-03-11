@@ -64,21 +64,67 @@
               </div>
             </div>
 
-            <label v-if="viewMode === 'formateur'" class="block">
+            <div v-if="viewMode === 'formateur'" class="block">
               <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Formateur</span>
-              <select v-model.number="selectedFormateurId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                <option :value="null">Choisir un formateur</option>
-                <option v-for="f in formateurOptions" :key="f.id" :value="f.id">{{ f.label }}</option>
-              </select>
-            </label>
+              <div class="relative">
+                <input
+                  v-model="formateurSearch"
+                  type="text"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Rechercher un formateur..."
+                  @focus="showFormateurPicker = true"
+                  @input="showFormateurPicker = true"
+                  @blur="hideFormateurPicker"
+                />
+                <div
+                  v-if="showFormateurPicker"
+                  class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                >
+                  <button
+                    v-for="f in filteredFormateurOptions"
+                    :key="f.id"
+                    type="button"
+                    class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    :class="selectedFormateurId === f.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
+                    @mousedown.prevent="selectFormateurOption(f.id, f.label)"
+                  >
+                    {{ f.label }}
+                  </button>
+                  <p v-if="!filteredFormateurOptions.length" class="px-2 py-2 text-xs text-slate-500">Aucun formateur trouve.</p>
+                </div>
+              </div>
+            </div>
 
-            <label v-else class="block">
+            <div v-else class="block">
               <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Groupe</span>
-              <select v-model.number="selectedGroupeId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                <option :value="null">Choisir un groupe</option>
-                <option v-for="g in groupeOptions" :key="g.id" :value="g.id">{{ g.label }}</option>
-              </select>
-            </label>
+              <div class="relative">
+                <input
+                  v-model="groupeSearch"
+                  type="text"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Rechercher un groupe..."
+                  @focus="showGroupePicker = true"
+                  @input="showGroupePicker = true"
+                  @blur="hideGroupePicker"
+                />
+                <div
+                  v-if="showGroupePicker"
+                  class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                >
+                  <button
+                    v-for="g in filteredGroupeOptions"
+                    :key="g.id"
+                    type="button"
+                    class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    :class="selectedGroupeId === g.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
+                    @mousedown.prevent="selectGroupeOption(g.id, g.label)"
+                  >
+                    {{ g.label }}
+                  </button>
+                  <p v-if="!filteredGroupeOptions.length" class="px-2 py-2 text-xs text-slate-500">Aucun groupe trouve.</p>
+                </div>
+              </div>
+            </div>
 
             <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
               Glissez sur les cases vides pour creer une seance. Glissez une seance existante pour la deplacer vers un autre jour/creneau.
@@ -305,21 +351,67 @@
               <button class="rounded-full border border-slate-300 px-3 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100" @click="applyPresetDuration(300)">5:00</button>
             </div>
 
-            <label class="block">
+            <div class="block">
               <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewMode === 'formateur' ? 'Groupe + Module' : 'Formateur + Module' }}</span>
-              <select v-model.number="modalAssignmentId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                <option :value="null">Choisir une affectation</option>
-                <option v-for="a in modalAssignments" :key="a.id" :value="a.id">{{ assignmentLabel(a, viewMode) }}</option>
-              </select>
-            </label>
+              <div class="relative">
+                <input
+                  v-model="modalAssignmentSearch"
+                  type="text"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Rechercher une affectation..."
+                  @focus="showModalAssignmentPicker = true"
+                  @input="showModalAssignmentPicker = true"
+                  @blur="hideModalAssignmentPicker"
+                />
+                <div
+                  v-if="showModalAssignmentPicker"
+                  class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                >
+                  <button
+                    v-for="a in filteredModalAssignments"
+                    :key="a.id"
+                    type="button"
+                    class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    :class="modalAssignmentId === a.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
+                    @mousedown.prevent="selectModalAssignment(a.id)"
+                  >
+                    {{ assignmentLabel(a, viewMode) }}
+                  </button>
+                  <p v-if="!filteredModalAssignments.length" class="px-2 py-2 text-xs text-slate-500">Aucune affectation trouvee.</p>
+                </div>
+              </div>
+            </div>
 
-            <label class="block">
+            <div class="block">
               <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Salle</span>
-              <select v-model.number="modalSalleId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                <option :value="null">Choisir une salle</option>
-                <option v-for="s in salles" :key="s.id" :value="s.id">{{ s.nom_salle }}</option>
-              </select>
-            </label>
+              <div class="relative">
+                <input
+                  v-model="modalSalleSearch"
+                  type="text"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Rechercher une salle..."
+                  @focus="showModalSallePicker = true"
+                  @input="showModalSallePicker = true"
+                  @blur="hideModalSallePicker"
+                />
+                <div
+                  v-if="showModalSallePicker"
+                  class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                >
+                  <button
+                    v-for="s in filteredSalles"
+                    :key="s.id"
+                    type="button"
+                    class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    :class="modalSalleId === s.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
+                    @mousedown.prevent="selectModalSalle(s.id)"
+                  >
+                    {{ s.nom_salle }}
+                  </button>
+                  <p v-if="!filteredSalles.length" class="px-2 py-2 text-xs text-slate-500">Aucune salle trouvee.</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
@@ -426,6 +518,10 @@ const error = ref<string | null>(null)
 const viewMode = ref<ViewMode>(route.query.view === 'groupe' ? 'groupe' : 'formateur')
 const selectedFormateurId = ref<number | null>(null)
 const selectedGroupeId = ref<number | null>(null)
+const formateurSearch = ref('')
+const groupeSearch = ref('')
+const showFormateurPicker = ref(false)
+const showGroupePicker = ref(false)
 
 const allAssignments = ref<Assignment[]>([])
 const allSchedule = ref<Session[]>([])
@@ -442,6 +538,10 @@ const modalStartTime = ref('08:30')
 const modalEndTime = ref('11:00')
 const modalAssignmentId = ref<number | null>(null)
 const modalSalleId = ref<number | null>(null)
+const modalAssignmentSearch = ref('')
+const modalSalleSearch = ref('')
+const showModalAssignmentPicker = ref(false)
+const showModalSallePicker = ref(false)
 
 const dragDayIdx = ref<number | null>(null)
 const dragStartSlot = ref<number | null>(null)
@@ -524,6 +624,68 @@ const groupeOptions = computed(() => {
   return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
 })
 
+const filteredFormateurOptions = computed(() => {
+  const query = formateurSearch.value.trim().toLowerCase()
+  if (!query) return formateurOptions.value
+  return formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
+})
+
+const filteredGroupeOptions = computed(() => {
+  const query = groupeSearch.value.trim().toLowerCase()
+  if (!query) return groupeOptions.value
+  return groupeOptions.value.filter((g) => g.label.toLowerCase().includes(query))
+})
+
+function selectFormateurOption(id: number, label: string) {
+  selectedFormateurId.value = id
+  formateurSearch.value = label
+  showFormateurPicker.value = false
+}
+
+function selectGroupeOption(id: number, label: string) {
+  selectedGroupeId.value = id
+  groupeSearch.value = label
+  showGroupePicker.value = false
+}
+
+function hideFormateurPicker() {
+  setTimeout(() => {
+    showFormateurPicker.value = false
+  }, 120)
+}
+
+function hideGroupePicker() {
+  setTimeout(() => {
+    showGroupePicker.value = false
+  }, 120)
+}
+
+function selectModalAssignment(assignmentId: number) {
+  modalAssignmentId.value = assignmentId
+  const selected = modalAssignments.value.find((a) => a.id === assignmentId)
+  modalAssignmentSearch.value = selected ? assignmentLabel(selected, viewMode.value) : ''
+  showModalAssignmentPicker.value = false
+}
+
+function selectModalSalle(salleId: number) {
+  modalSalleId.value = salleId
+  const selected = salles.value.find((s) => s.id === salleId)
+  modalSalleSearch.value = selected?.nom_salle || ''
+  showModalSallePicker.value = false
+}
+
+function hideModalAssignmentPicker() {
+  setTimeout(() => {
+    showModalAssignmentPicker.value = false
+  }, 120)
+}
+
+function hideModalSallePicker() {
+  setTimeout(() => {
+    showModalSallePicker.value = false
+  }, 120)
+}
+
 const filteredSchedule = computed(() => {
   if (viewMode.value === 'formateur' && selectedFormateurId.value) {
     return allSchedule.value.filter((s) => s.module_groupe_formateur.id_formateur === selectedFormateurId.value)
@@ -541,6 +703,19 @@ const modalAssignments = computed(() => {
     return allAssignments.value.filter((a) => a.id_formateur === selectedFormateurId.value)
   }
   return allAssignments.value.filter((a) => a.id_groupe === selectedGroupeId.value)
+})
+
+const filteredModalAssignments = computed(() => {
+  const query = modalAssignmentSearch.value.trim().toLowerCase()
+  if (!query) return modalAssignments.value
+
+  return modalAssignments.value.filter((a) => assignmentLabel(a, viewMode.value).toLowerCase().includes(query))
+})
+
+const filteredSalles = computed(() => {
+  const query = modalSalleSearch.value.trim().toLowerCase()
+  if (!query) return salles.value
+  return salles.value.filter((s) => s.nom_salle.toLowerCase().includes(query))
 })
 
 const modalDurationLabel = computed(() => {
@@ -826,6 +1001,10 @@ function endDrag(dayIdx?: number, slotIdx?: number) {
   editingSessionId.value = null
   modalAssignmentId.value = null
   modalSalleId.value = null
+  modalAssignmentSearch.value = ''
+  modalSalleSearch.value = ''
+  showModalAssignmentPicker.value = false
+  showModalSallePicker.value = false
   modalError.value = null
   isModalOpen.value = true
 
@@ -938,6 +1117,8 @@ function closeModal() {
   modalError.value = null
   modalMode.value = 'create'
   editingSessionId.value = null
+  showModalAssignmentPicker.value = false
+  showModalSallePicker.value = false
   isModalOpen.value = false
 }
 
@@ -949,6 +1130,12 @@ function openEditModal(session: Session) {
   modalEndTime.value = session.heure_fin.substring(0, 5)
   modalAssignmentId.value = session.id_module_groupe_formateur
   modalSalleId.value = session.id_salle
+  const selectedAssignment = modalAssignments.value.find((a) => a.id === session.id_module_groupe_formateur)
+  modalAssignmentSearch.value = selectedAssignment ? assignmentLabel(selectedAssignment, viewMode.value) : ''
+  const selectedSalle = salles.value.find((s) => s.id === session.id_salle)
+  modalSalleSearch.value = selectedSalle?.nom_salle || ''
+  showModalAssignmentPicker.value = false
+  showModalSallePicker.value = false
   modalError.value = null
   isModalOpen.value = true
 }
@@ -1117,6 +1304,36 @@ watch(viewMode, () => {
 
   router.replace({ query: { ...route.query, view: viewMode.value } })
   loadSchedule()
+})
+
+watch(selectedFormateurId, (id) => {
+  if (!id) return
+  const selected = formateurOptions.value.find((f) => f.id === id)
+  if (selected) formateurSearch.value = selected.label
+})
+
+watch(selectedGroupeId, (id) => {
+  if (!id) return
+  const selected = groupeOptions.value.find((g) => g.id === id)
+  if (selected) groupeSearch.value = selected.label
+})
+
+watch(modalAssignmentId, (id) => {
+  if (!id) {
+    modalAssignmentSearch.value = ''
+    return
+  }
+  const selected = modalAssignments.value.find((a) => a.id === id)
+  if (selected) modalAssignmentSearch.value = assignmentLabel(selected, viewMode.value)
+})
+
+watch(modalSalleId, (id) => {
+  if (!id) {
+    modalSalleSearch.value = ''
+    return
+  }
+  const selected = salles.value.find((s) => s.id === id)
+  if (selected) modalSalleSearch.value = selected.nom_salle
 })
 
 watch([selectedFormateurId, selectedGroupeId, currentWeekStart], () => {
