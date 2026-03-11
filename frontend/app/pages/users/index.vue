@@ -161,17 +161,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-2">
                       <button
-                        @click="viewUser(user)"
-                        class="text-sky-600 hover:text-sky-900"
-                        title="Voir"
-                      >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button
-                        @click="editUser(user)"
+                        @click="openEditModal(user)"
                         class="text-green-600 hover:text-green-900"
                         title="Modifier"
                       >
@@ -180,7 +170,7 @@
                         </svg>
                       </button>
                       <button
-                        @click="deleteUser(user)"
+                        @click="openDeleteModal(user)"
                         class="text-red-600 hover:text-red-900"
                         title="Supprimer"
                       >
@@ -197,6 +187,206 @@
         </div>
       </main>
     </div>
+
+    <!-- Edit User Modal -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showEditModal"
+        class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+        @click.self="closeEditModal"
+      >
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="showEditModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">Modifier l'utilisateur</h3>
+              <button
+                @click="closeEditModal"
+                class="text-slate-500 hover:text-slate-700"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form @submit.prevent="saveUserChanges" class="p-6 space-y-4">
+              <div v-if="editError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-sm text-red-800">{{ editError }}</p>
+              </div>
+
+              <!-- Matricule -->
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Matricule <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="editForm.matricule"
+                  type="text"
+                  required
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                />
+              </div>
+
+              <!-- Nom -->
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Nom <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="editForm.nom"
+                  type="text"
+                  required
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                />
+              </div>
+
+              <!-- Prénom -->
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Prénom <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="editForm.prenom"
+                  type="text"
+                  required
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                />
+              </div>
+
+              <!-- Email -->
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Email <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="editForm.email"
+                  type="email"
+                  required
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                />
+              </div>
+
+              <!-- Rôle -->
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Rôle <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="editForm.role"
+                  required
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                >
+                  <option value="DIRECTEUR">Directeur</option>
+                  <option value="CHEF_POLE">Chef de Pôle</option>
+                  <option value="FORMATEUR">Formateur</option>
+                </select>
+              </div>
+
+              <!-- Form Actions -->
+              <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  @click="closeEditModal"
+                  class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  :disabled="editSubmitting"
+                  class="px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="editSubmitting" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Enregistrement...
+                  </span>
+                  <span v-else>Enregistrer les modifications</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+
+    <!-- Delete Confirmation Modal -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showDeleteModal"
+        class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+        @click.self="closeDeleteModal"
+      >
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="showDeleteModal" class="bg-white rounded-xl shadow-lg max-w-md w-full">
+            <div class="p-6">
+              <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2M6 5h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z" />
+                </svg>
+              </div>
+              <h3 class="mt-4 text-lg font-semibold text-slate-900 text-center">Confirmer la suppression</h3>
+              <p class="mt-2 text-sm text-slate-600 text-center">
+                Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{{ userToDelete?.prenom }} {{ userToDelete?.nom }}</strong> ? Cette action ne peut pas être annulée.
+              </p>
+              
+              <div class="mt-6 flex items-center justify-center gap-3">
+                <button
+                  @click="closeDeleteModal"
+                  class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  @click="confirmDelete"
+                  :disabled="deleteSubmitting"
+                  class="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="deleteSubmitting" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Suppression en cours...
+                  </span>
+                  <span v-else>Supprimer</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
 
     <!-- Mobile Drawer Overlay -->
     <Transition
@@ -280,6 +470,24 @@ const error = ref<string | null>(null)
 const searchQuery = ref('')
 const selectedRole = ref('Tous')
 
+// Edit modal state
+const showEditModal = ref(false)
+const editForm = ref({
+  id: 0,
+  matricule: '',
+  nom: '',
+  prenom: '',
+  email: '',
+  role: 'DIRECTEUR' as 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+})
+const editError = ref<string | null>(null)
+const editSubmitting = ref(false)
+
+// Delete modal state
+const showDeleteModal = ref(false)
+const userToDelete = ref<User | null>(null)
+const deleteSubmitting = ref(false)
+
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
   return `${authStore.user.nom} ${authStore.user.prenom}`.trim()
@@ -361,8 +569,85 @@ const viewUser = (user: User) => {
   console.log('View user:', user)
 }
 
-const editUser = (user: User) => {
-  router.push(`/users/edit/${user.id}`)
+const openEditModal = (user: User) => {
+  editForm.value = {
+    id: user.id,
+    matricule: user.matricule,
+    nom: user.nom,
+    prenom: user.prenom,
+    email: user.email,
+    role: user.role
+  }
+  editError.value = null
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editError.value = null
+}
+
+const saveUserChanges = async () => {
+  editSubmitting.value = true
+  editError.value = null
+
+  try {
+    await api.put(`/users/${editForm.value.id}`, {
+      matricule: editForm.value.matricule,
+      nom: editForm.value.nom,
+      prenom: editForm.value.prenom,
+      email: editForm.value.email,
+      role: editForm.value.role
+    })
+
+    // Update the user in the list
+    const userIndex = users.value.findIndex(u => u.id === editForm.value.id)
+    if (userIndex !== -1) {
+      users.value[userIndex] = {
+        id: editForm.value.id,
+        matricule: editForm.value.matricule,
+        nom: editForm.value.nom,
+        prenom: editForm.value.prenom,
+        email: editForm.value.email,
+        role: editForm.value.role
+      }
+    }
+
+    closeEditModal()
+  } catch (err: any) {
+    editError.value = err.message || 'Erreur lors de la mise à jour'
+    console.error('Error updating user:', err)
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+const openDeleteModal = (user: User) => {
+  userToDelete.value = user
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false
+  userToDelete.value = null
+}
+
+const confirmDelete = async () => {
+  if (!userToDelete.value) return
+
+  deleteSubmitting.value = true
+
+  try {
+    await api.delete(`/users/${userToDelete.value.id}`)
+    // Remove from list
+    users.value = users.value.filter(u => u.id !== userToDelete.value?.id)
+    closeDeleteModal()
+  } catch (err: any) {
+    console.error('Error deleting user:', err)
+    // Don't close modal on error, let user see the error message
+  } finally {
+    deleteSubmitting.value = false
+  }
 }
 
 const deleteUser = async (user: User) => {
