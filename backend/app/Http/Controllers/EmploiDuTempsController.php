@@ -355,6 +355,7 @@ class EmploiDuTempsController extends Controller
             'start_date' => 'required|date',
             'id_groupe' => 'nullable|integer|exists:groupes,id',
             'id_formateur' => 'nullable|integer|exists:formateurs,id',
+            'id_pole' => 'nullable|integer|exists:poles,id',
             'id_salle' => 'nullable|integer|exists:salles,id',
             'id_module' => 'nullable|integer|exists:modules,id',
         ]);
@@ -378,6 +379,16 @@ class EmploiDuTempsController extends Controller
         if (isset($data['id_formateur'])) {
             $query->whereHas('moduleGroupeFormateur', function ($q) use ($data) {
                 $q->where('id_formateur', $data['id_formateur']);
+            });
+        }
+
+        if (isset($data['id_pole'])) {
+            $query->where(function ($q) use ($data) {
+                $q->whereHas('moduleGroupeFormateur.module.filiere', function ($mf) use ($data) {
+                    $mf->where('id_pole', $data['id_pole']);
+                })->orWhereHas('moduleGroupeFormateur.groupe.filiere', function ($gf) use ($data) {
+                    $gf->where('id_pole', $data['id_pole']);
+                });
             });
         }
 

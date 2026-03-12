@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/auth'
 type RoleKey = 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
 
 const roleRoutePrefixes: Record<RoleKey, string[]> = {
-  DIRECTEUR: ['/dashboard', '/users', '/poles', '/salles', '/formateurs', '/filieres', '/settings'],
+  DIRECTEUR: ['/dashboard', '/users', '/poles', '/salles', '/formateurs', '/filieres', '/emploi-du-temps', '/settings'],
   CHEF_POLE: ['/dashboard', '/chef', '/salles', '/settings'],
   FORMATEUR: ['/dashboard', '/settings', '/formateur'],
 }

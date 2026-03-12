@@ -153,8 +153,8 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Emploi du Temps',
         items: [
-          { label: 'Vue globale', path: '/emploi-du-temps', icon: 'calendar' },
-          { label: 'Par pole', path: '/emploi-du-temps?view=pole', icon: 'filter' },
+          { label: 'Par pole', path: '/emploi-du-temps', icon: 'calendar' },
+          { label: '2 formateurs', path: '/emploi-du-temps?view=duo', icon: 'filter' },
           { label: 'Par formateur', path: '/emploi-du-temps?view=formateur', icon: 'filter' },
         ],
       },
