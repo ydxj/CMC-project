@@ -23,6 +23,29 @@ INSERT INTO users (id, nom, prenom, email, password, role) VALUES
 (18, 'ZAHRI', 'OUSSAMA', 'user21408_1@cmc.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'FORMATEUR');
 
 
+-- FORMATEURS
+
+INSERT INTO formateurs (id, id_user, type_formateur, MHS, NBR_semaine) VALUES
+(1, 1, 'FP', 18, 24),
+(2, 2, 'FP', 18, 24),
+(3, 3, 'FP', 18, 24),
+(4, 4, 'FP', 18, 24),
+(5, 5, 'FP', 18, 24),
+(6, 6, 'FP', 18, 24),
+(7, 7, 'FP', 18, 24),
+(8, 8, 'FP', 18, 24),
+(9, 9, 'FP', 18, 24),
+(10, 10, 'FP', 18, 24),
+(11, 11, 'FP', 18, 24),
+(12, 12, 'FP', 18, 24),
+(13, 13, 'FP', 18, 24),
+(14, 14, 'FP', 18, 24),
+(15, 15, 'FP', 18, 24),
+(16, 16, 'FP', 18, 24),
+(17, 17, 'FP', 18, 24),
+(18, 18, 'FP', 18, 24);
+
+
 -- POLES
 
 INSERT INTO poles (id, nom_pole, id_chef) VALUES
@@ -34,6 +57,29 @@ INSERT INTO poles (id, nom_pole, id_chef) VALUES
 (6, 'SANTE', NULL),
 (7, 'SAP', NULL),
 (8, 'THR', NULL);
+
+
+-- FORMATEUR_POLE
+
+INSERT INTO formateur_pole (id, id_formateur, id_pole) VALUES
+(1, 1, 1),
+(2, 2, 2),
+(3, 3, 3),
+(4, 4, 4),
+(5, 5, 5),
+(6, 6, 6),
+(7, 7, 7),
+(8, 8, 8),
+(9, 9, 1),
+(10, 10, 2),
+(11, 11, 3),
+(12, 12, 4),
+(13, 13, 5),
+(14, 14, 6),
+(15, 15, 7),
+(16, 16, 8),
+(17, 17, 3),
+(18, 18, 3);
 
 
 -- FILIERES
@@ -334,6 +380,8 @@ INSERT INTO module_groupe_formateur (id, id_module, id_groupe, id_formateur) VAL
 
 -- SOME SELECTS TO TEST THE DATA
 SELECT * FROM users;
+SELECT * FROM formateurs;
+SELECT * FROM formateur_pole;
 SELECT * FROM poles;
 SELECT * FROM filieres;
 SELECT * FROM groupes;
@@ -345,6 +393,7 @@ SELECT mgf.id, m.nom_module, g.nom_groupe, CONCAT(u.prenom,' ', u.nom) AS format
 FROM module_groupe_formateur mgf
 JOIN modules m ON mgf.id_module = m.id
 JOIN groupes g ON mgf.id_groupe = g.id
-JOIN users u ON mgf.id_formateur = u.id
+JOIN formateurs f ON mgf.id_formateur = f.id
+JOIN users u ON f.id_user = u.id
 ORDER BY mgf.id;
 
