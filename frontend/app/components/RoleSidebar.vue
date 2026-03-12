@@ -151,11 +151,11 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         ],
       },
       {
-        label: 'Emploi du Temps',
+        label: 'Planification',
         items: [
-          { label: 'Par pole', path: '/emploi-du-temps', icon: 'calendar' },
-          { label: '2 formateurs', path: '/emploi-du-temps?view=duo', icon: 'filter' },
-          { label: 'Par formateur', path: '/emploi-du-temps?view=formateur', icon: 'filter' },
+          { label: 'Planning par pole', path: '/emploi-du-temps', icon: 'building' },
+          { label: 'Comparer 2 formateurs', path: '/emploi-du-temps?view=duo', icon: 'users' },
+          { label: 'Planning par formateur', path: '/emploi-du-temps?view=formateur', icon: 'teacher' },
         ],
       },
     ],
