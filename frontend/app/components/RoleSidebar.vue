@@ -271,12 +271,47 @@ const menu = computed<RoleMenu>(() => menusByRole[roleKey.value])
 
 const iconPath = (icon: IconName) => iconPaths[icon]
 
-const isActive = (path: string) => {
-  const pathWithoutQuery = path.split('?')[0] || path
-  if (pathWithoutQuery === '/dashboard') {
-    return route.path === '/dashboard'
+const allMenuPaths = computed(() => {
+  const groupPaths = menu.value.groups.flatMap((group) => group.items.map((item) => item.path))
+  return [menu.value.dashboard.path, ...groupPaths, menu.value.settings.path]
+})
+
+function normalizePath(path: string): string {
+  if (path.length > 1 && path.endsWith('/')) {
+    return path.slice(0, -1)
   }
-  return route.path.startsWith(pathWithoutQuery)
+  return path
+}
+
+const isActive = (path: string) => {
+  const [rawTargetPath, rawQuery = ''] = path.split('?')
+  const targetPath = normalizePath(rawTargetPath || path)
+  const currentPath = normalizePath(route.path)
+
+  if (currentPath !== targetPath) {
+    return false
+  }
+
+  const targetQuery = new URLSearchParams(rawQuery)
+  if ([...targetQuery.keys()].length > 0) {
+    return [...targetQuery.entries()].every(([key, value]) => {
+      const current = route.query[key]
+      if (Array.isArray(current)) return current.includes(value)
+      return String(current ?? '') === value
+    })
+  }
+
+  const targetHasScopedVariants = allMenuPaths.value.some((candidate) => {
+    if (candidate === path) return false
+    const [candidatePath, candidateQuery = ''] = candidate.split('?')
+    return normalizePath(candidatePath || candidate) === targetPath && candidateQuery.length > 0
+  })
+
+  if (targetHasScopedVariants) {
+    return Object.keys(route.query).length === 0
+  }
+
+  return true
 }
 
 const linkClass = (path: string) => {
