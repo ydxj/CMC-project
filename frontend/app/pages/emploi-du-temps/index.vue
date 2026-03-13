@@ -61,7 +61,7 @@
                   class="rounded-md px-3 py-1.5 text-xs font-semibold transition"
                   :class="viewMode === 'duo' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
                 >
-                  2 Formateurs
+                  Multi Formateurs
                 </button>
                 <button
                   type="button"
@@ -106,66 +106,118 @@
               </div>
             </div>
 
-            <!-- Compare 2 formateurs -->
+            <!-- Multi-select formateurs -->
             <div v-else-if="viewMode === 'duo'" class="sm:col-span-2 lg:col-span-2">
-              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Comparer 2 formateurs</span>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <div class="relative">
-                  <input
-                    v-model="compareFormateurASearch"
-                    type="text"
-                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    placeholder="Formateur 1"
-                    @focus="showCompareFormateurAPicker = true"
-                    @input="showCompareFormateurAPicker = true"
-                    @blur="hideCompareFormateurAPicker"
-                  />
-                  <div
-                    v-if="showCompareFormateurAPicker"
-                    class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Formateurs selectionnés</span>
+                <span
+                  v-if="selectedCompareFormateurIds.length > 0"
+                  class="inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-sky-100 px-1.5 text-[11px] font-bold text-sky-700"
+                >{{ selectedCompareFormateurIds.length }}</span>
+              </div>
+
+              <!-- Trigger / combobox row -->
+              <div class="relative">
+                <div
+                  class="flex min-h-[42px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 shadow-sm transition focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20"
+                  @click="showMultiFormateurPicker = true"
+                >
+                  <!-- Selected chips inside the input box -->
+                  <span
+                    v-for="fId in selectedCompareFormateurIds"
+                    :key="`chip-${fId}`"
+                    class="inline-flex items-center gap-1.5 rounded-full border py-0.5 pl-2 pr-1 text-[11px] font-semibold shadow-sm"
+                    :style="{ backgroundColor: getFormateurColor(fId)?.light || 'rgba(148,163,184,0.12)', borderColor: getFormateurColor(fId)?.border || '#94a3b8', color: getFormateurColor(fId)?.solid || '#64748b' }"
                   >
+                    <span class="inline-block h-2 w-2 rounded-full flex-shrink-0" :style="{ backgroundColor: getFormateurColor(fId)?.solid || '#94a3b8' }"></span>
+                    {{ getFormateurLabel(fId) }}
                     <button
-                      v-for="f in filteredCompareFormateurAOptions"
-                      :key="`a-${f.id}`"
                       type="button"
-                      class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                      :class="selectedCompareFormateurAId === f.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
-                      @mousedown.prevent="selectCompareFormateurAOption(f.id, f.label)"
+                      class="ml-0.5 flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full text-current opacity-60 transition hover:opacity-100 focus:outline-none"
+                      @mousedown.prevent="removeFormateurSelection(fId)"
+                      aria-label="Retirer"
                     >
-                      {{ f.label }}
+                      <svg viewBox="0 0 10 10" class="h-2.5 w-2.5" fill="currentColor"><path d="M6.414 5l2.293-2.293a1 1 0 00-1.414-1.414L5 3.586 2.707 1.293A1 1 0 001.293 2.707L3.586 5 1.293 7.293a1 1 0 001.414 1.414L5 6.414l2.293 2.293a1 1 0 001.414-1.414z"/></svg>
                     </button>
-                    <p v-if="!filteredCompareFormateurAOptions.length" class="px-2 py-2 text-xs text-slate-500">Aucun formateur trouve.</p>
-                  </div>
+                  </span>
+
+                  <!-- Search input -->
+                  <input
+                    v-model="multiFormateurSearch"
+                    type="text"
+                    class="min-w-[120px] flex-1 border-none bg-transparent py-0.5 text-sm text-slate-700 placeholder-slate-400 outline-none"
+                    :placeholder="selectedCompareFormateurIds.length === 0 ? 'Rechercher un formateur…' : 'Ajouter un formateur…'"
+                    @focus="showMultiFormateurPicker = true"
+                    @input="showMultiFormateurPicker = true"
+                    @blur="hideMultiFormateurPicker"
+                    @keydown.esc="showMultiFormateurPicker = false"
+                  />
+
+                  <!-- Caret icon -->
+                  <svg class="ml-auto h-4 w-4 flex-shrink-0 text-slate-400 transition-transform" :class="showMultiFormateurPicker ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" pointer-events="none">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
 
-                <div class="relative">
-                  <input
-                    v-model="compareFormateurBSearch"
-                    type="text"
-                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    placeholder="Formateur 2"
-                    @focus="showCompareFormateurBPicker = true"
-                    @input="showCompareFormateurBPicker = true"
-                    @blur="hideCompareFormateurBPicker"
-                  />
+                <!-- Dropdown -->
+                <Transition
+                  enter-active-class="transition duration-100 ease-out"
+                  enter-from-class="opacity-0 scale-95 -translate-y-1"
+                  enter-to-class="opacity-100 scale-100 translate-y-0"
+                  leave-active-class="transition duration-75 ease-in"
+                  leave-from-class="opacity-100 scale-100 translate-y-0"
+                  leave-to-class="opacity-0 scale-95 -translate-y-1"
+                >
                   <div
-                    v-if="showCompareFormateurBPicker"
-                    class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                    v-if="showMultiFormateurPicker"
+                    class="absolute z-30 mt-1.5 max-h-64 w-full origin-top overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl ring-1 ring-slate-900/5"
                   >
-                    <button
-                      v-for="f in filteredCompareFormateurBOptions"
-                      :key="`b-${f.id}`"
-                      type="button"
-                      class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                      :class="selectedCompareFormateurBId === f.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
-                      @mousedown.prevent="selectCompareFormateurBOption(f.id, f.label)"
-                    >
-                      {{ f.label }}
-                    </button>
-                    <p v-if="!filteredCompareFormateurBOptions.length" class="px-2 py-2 text-xs text-slate-500">Aucun formateur trouve.</p>
+                    <div class="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 backdrop-blur">
+                      Liste des formateurs
+                    </div>
+                    <template v-if="filteredMultiFormateurOptions.length > 0">
+                      <button
+                        v-for="f in filteredMultiFormateurOptions"
+                        :key="f.id"
+                        type="button"
+                        class="group flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition"
+                        :class="selectedCompareFormateurIds.includes(f.id) ? 'bg-slate-50' : 'hover:bg-slate-50'"
+                        @mousedown.prevent="toggleFormateurSelection(f.id)"
+                      >
+                        <!-- Color swatch / checkmark -->
+                        <span
+                          class="relative inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                          :style="selectedCompareFormateurIds.includes(f.id)
+                            ? { backgroundColor: getFormateurColor(f.id)?.solid || '#64748b', borderColor: getFormateurColor(f.id)?.solid || '#64748b' }
+                            : { backgroundColor: 'transparent', borderColor: '#cbd5e1' }"
+                        >
+                          <svg v-if="selectedCompareFormateurIds.includes(f.id)" class="h-2.5 w-2.5 text-white" viewBox="0 0 12 12" fill="currentColor">
+                            <path d="M10.28 2.28a1 1 0 00-1.41 0L4.5 6.65 3.13 5.28a1 1 0 00-1.41 1.41l2.08 2.08a1 1 0 001.41 0l5.07-5.07a1 1 0 000-1.42z"/>
+                          </svg>
+                          <span
+                            v-else
+                            class="h-2 w-2 rounded-full opacity-0 transition group-hover:opacity-100"
+                            :style="{ backgroundColor: FORMATEUR_COLOR_PALETTE[filteredMultiFormateurOptions.indexOf(f) % FORMATEUR_COLOR_PALETTE.length]?.solid || '#94a3b8' }"
+                          ></span>
+                        </span>
+
+                        <!-- Avatar initials -->
+                        <span
+                          class="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
+                          :style="{ backgroundColor: selectedCompareFormateurIds.includes(f.id) ? (getFormateurColor(f.id)?.solid || '#64748b') : '#94a3b8' }"
+                        >{{ f.label.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
+
+                        <span class="flex-1 truncate font-medium text-slate-700" :class="selectedCompareFormateurIds.includes(f.id) ? 'text-slate-900' : ''">{{ f.label }}</span>
+
+                        <span v-if="selectedCompareFormateurIds.includes(f.id)" class="text-[10px] font-semibold text-slate-400">Selectionne</span>
+                      </button>
+                    </template>
+                    <p v-else class="px-4 py-3 text-xs text-slate-500">Aucun formateur trouvé.</p>
                   </div>
-                </div>
+                </Transition>
               </div>
+
+              <p v-if="selectedCompareFormateurIds.length === 0" class="mt-2 text-xs text-slate-400 italic">Aucun formateur sélectionné — tapez pour en chercher.</p>
             </div>
 
             <!-- Formateur picker -->
@@ -253,6 +305,19 @@
         <!-- Global planner layout for pole/duo views -->
         <template v-else-if="viewMode === 'pole' || viewMode === 'duo'">
 
+          <!-- Color legend for multi-formateur view -->
+          <div v-if="viewMode === 'duo' && selectedCompareFormateurIds.length > 0" class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Legende:</span>
+            <span
+              v-for="fId in selectedCompareFormateurIds"
+              :key="`legend-${fId}`"
+              class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+              :style="{ backgroundColor: getFormateurColor(fId)?.light || 'rgba(148,163,184,0.12)', borderColor: getFormateurColor(fId)?.border || '#94a3b8' }"
+            >
+              <span class="inline-block h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: getFormateurColor(fId)?.solid || '#64748b' }"></span>
+              {{ getFormateurLabel(fId) }}
+            </span>
+          </div>
 
           <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
@@ -291,7 +356,7 @@
                         <div v-if="cell.session" class="space-y-1.5">
                           <article
                             class="rounded-lg border p-2 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
-                            :style="stackCardStyle(cell.session, 0, conflictSessionIds.has(cell.session.id))"
+                            :style="getSessionCardStyle(cell.session, conflictSessionIds.has(cell.session.id))"
                           >
                             <div class="mb-0.5 flex items-center justify-between gap-2">
                               <p class="truncate text-[11px] font-semibold text-slate-800">{{ cell.session.module_groupe_formateur.module.nom_module }}</p>
@@ -596,7 +661,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../../composables/useApi'
 import { useAuthStore } from '../../../stores/auth'
@@ -684,6 +749,17 @@ const TIME_SLOTS = [
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const GLOBAL_SLOT_VISIBLE_LIMIT = 3
 
+const FORMATEUR_COLOR_PALETTE = [
+  { bg: 'rgba(14, 165, 233, 0.18)', border: 'rgba(14, 165, 233, 0.55)', solid: '#0ea5e9', light: 'rgba(14, 165, 233, 0.10)' },
+  { bg: 'rgba(99, 102, 241, 0.18)', border: 'rgba(99, 102, 241, 0.55)', solid: '#6366f1', light: 'rgba(99, 102, 241, 0.10)' },
+  { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.55)', solid: '#10b981', light: 'rgba(16, 185, 129, 0.10)' },
+  { bg: 'rgba(244, 114, 182, 0.18)', border: 'rgba(244, 114, 182, 0.55)', solid: '#f472b6', light: 'rgba(244, 114, 182, 0.10)' },
+  { bg: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.55)', solid: '#fb923c', light: 'rgba(251, 146, 60, 0.10)' },
+  { bg: 'rgba(168, 85, 247, 0.18)', border: 'rgba(168, 85, 247, 0.55)', solid: '#a855f7', light: 'rgba(168, 85, 247, 0.10)' },
+  { bg: 'rgba(234, 179, 8, 0.18)', border: 'rgba(234, 179, 8, 0.55)', solid: '#eab308', light: 'rgba(234, 179, 8, 0.10)' },
+  { bg: 'rgba(20, 184, 166, 0.18)', border: 'rgba(20, 184, 166, 0.55)', solid: '#14b8a6', light: 'rgba(20, 184, 166, 0.10)' },
+] as const
+
 const api = useApi()
 const route = useRoute()
 const router = useRouter()
@@ -705,12 +781,10 @@ const poleSearch = ref('')
 const showFormateurPicker = ref(false)
 const showPolePicker = ref(false)
 
-const selectedCompareFormateurAId = ref<number | null>(null)
-const selectedCompareFormateurBId = ref<number | null>(null)
-const compareFormateurASearch = ref('')
-const compareFormateurBSearch = ref('')
-const showCompareFormateurAPicker = ref(false)
-const showCompareFormateurBPicker = ref(false)
+const selectedCompareFormateurIds = ref<number[]>([])
+const multiFormateurSearch = ref('')
+const showMultiFormateurPicker = ref(false)
+const multiFormateurPickerRef = ref<HTMLElement | null>(null)
 
 const allAssignments = ref<Assignment[]>([])
 const allSchedule = ref<Session[]>([])
@@ -814,10 +888,10 @@ const activePoleLabel = computed(() => {
 })
 
 const activeCompareLabel = computed(() => {
-  if (viewMode.value !== 'duo') return 'Tous les formateurs'
-  const a = formateurOptions.value.find((f) => f.id === selectedCompareFormateurAId.value)?.label || 'Formateur 1'
-  const b = formateurOptions.value.find((f) => f.id === selectedCompareFormateurBId.value)?.label || 'Formateur 2'
-  return `${a} + ${b}`
+  if (viewMode.value !== 'duo' || selectedCompareFormateurIds.value.length === 0) return 'Tous les formateurs'
+  return selectedCompareFormateurIds.value
+    .map((id) => formateurOptions.value.find((f) => f.id === id)?.label || `Formateur #${id}`)
+    .join(' + ')
 })
 
 const formateurOptions = computed(() => {
@@ -855,23 +929,28 @@ const filteredPoleOptions = computed(() => {
   return poleOptions.value.filter((p) => p.label.toLowerCase().includes(query))
 })
 
-const filteredCompareFormateurAOptions = computed(() => {
-  const query = compareFormateurASearch.value.trim().toLowerCase()
-  if (!query) return formateurOptions.value
-  return formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
+const filteredMultiFormateurOptions = computed(() => {
+  const query = multiFormateurSearch.value.trim().toLowerCase()
+  const base = !query
+    ? formateurOptions.value
+    : formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
+
+  return [...base].sort((a, b) => {
+    const aSelected = selectedCompareFormateurIds.value.includes(a.id)
+    const bSelected = selectedCompareFormateurIds.value.includes(b.id)
+    if (aSelected !== bSelected) return aSelected ? 1 : -1
+    return a.label.localeCompare(b.label)
+  })
 })
 
-const filteredCompareFormateurBOptions = computed(() => {
-  const query = compareFormateurBSearch.value.trim().toLowerCase()
-  if (!query) return formateurOptions.value
-  return formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
-})
+const compareFormateurIds = computed(() => new Set(selectedCompareFormateurIds.value))
 
-const compareFormateurIds = computed(() => {
-  const ids = new Set<number>()
-  if (selectedCompareFormateurAId.value) ids.add(selectedCompareFormateurAId.value)
-  if (selectedCompareFormateurBId.value) ids.add(selectedCompareFormateurBId.value)
-  return ids
+const formateurColorMap = computed(() => {
+  const map = new Map<number, { bg: string; border: string; solid: string; light: string }>()
+  selectedCompareFormateurIds.value.forEach((id, idx) => {
+    map.set(id, FORMATEUR_COLOR_PALETTE[idx % FORMATEUR_COLOR_PALETTE.length]!)
+  })
+  return map
 })
 
 const poleFiliereIds = computed(() => {
@@ -1211,6 +1290,20 @@ function stackCardStyle(session: Session, stackIndex: number, hasConflict: boole
   }
 }
 
+function getSessionCardStyle(session: Session, hasConflict: boolean): Record<string, string> {
+  if (viewMode.value === 'duo') {
+    const color = formateurColorMap.value.get(session.module_groupe_formateur.id_formateur)
+    if (color) {
+      return {
+        backgroundColor: color.bg,
+        borderColor: hasConflict ? 'rgba(217, 119, 6, 0.62)' : color.border,
+        backdropFilter: 'blur(1px)',
+      }
+    }
+  }
+  return stackCardStyle(session, 0, hasConflict)
+}
+
 function daySessionCount(dayIdx: number): number {
   const day = weekDays.value[dayIdx]
   if (!day) return 0
@@ -1259,12 +1352,6 @@ function selectPoleOption(id: number, label: string) {
   showPolePicker.value = false
 }
 
-function selectCompareFormateurAOption(id: number, label: string) {
-  selectedCompareFormateurAId.value = id
-  compareFormateurASearch.value = label
-  showCompareFormateurAPicker.value = false
-}
-
 function hideFormateurPicker() {
   setTimeout(() => { showFormateurPicker.value = false }, 120)
 }
@@ -1273,18 +1360,39 @@ function hidePolePicker() {
   setTimeout(() => { showPolePicker.value = false }, 120)
 }
 
-function selectCompareFormateurBOption(id: number, label: string) {
-  selectedCompareFormateurBId.value = id
-  compareFormateurBSearch.value = label
-  showCompareFormateurBPicker.value = false
+function toggleFormateurSelection(id: number) {
+  const idx = selectedCompareFormateurIds.value.indexOf(id)
+  if (idx === -1) {
+    selectedCompareFormateurIds.value = [...selectedCompareFormateurIds.value, id]
+  } else {
+    selectedCompareFormateurIds.value = selectedCompareFormateurIds.value.filter((fId) => fId !== id)
+  }
+  multiFormateurSearch.value = ''
 }
 
-function hideCompareFormateurAPicker() {
-  setTimeout(() => { showCompareFormateurAPicker.value = false }, 120)
+function removeFormateurSelection(id: number) {
+  selectedCompareFormateurIds.value = selectedCompareFormateurIds.value.filter((fId) => fId !== id)
 }
 
-function hideCompareFormateurBPicker() {
-  setTimeout(() => { showCompareFormateurBPicker.value = false }, 120)
+function hideMultiFormateurPicker() {
+  setTimeout(() => { showMultiFormateurPicker.value = false }, 120)
+}
+
+function handleMultiFormateurOutsideClick(event: MouseEvent) {
+  if (!showMultiFormateurPicker.value) return
+  const target = event.target as Node | null
+  if (!target) return
+  if (multiFormateurPickerRef.value && !multiFormateurPickerRef.value.contains(target)) {
+    showMultiFormateurPicker.value = false
+  }
+}
+
+function getFormateurColor(id: number) {
+  return formateurColorMap.value.get(id) || null
+}
+
+function getFormateurLabel(id: number): string {
+  return formateurOptions.value.find((f) => f.id === id)?.label || `Formateur #${id}`
 }
 
 function selectModalAssignment(assignmentId: number) {
@@ -1732,14 +1840,10 @@ async function loadBaseData() {
     selectedFormateurId.value = formateurOptions.value[0].id
   }
 
-  if (!selectedCompareFormateurAId.value && formateurOptions.value[0]) {
-    selectedCompareFormateurAId.value = formateurOptions.value[0].id
-  }
-
-  if (!selectedCompareFormateurBId.value) {
-    const first = selectedCompareFormateurAId.value
-    const second = formateurOptions.value.find((f) => f.id !== first)
-    selectedCompareFormateurBId.value = second?.id || first || null
+  if (selectedCompareFormateurIds.value.length === 0 && formateurOptions.value.length > 0) {
+    const first = formateurOptions.value[0]!.id
+    const second = formateurOptions.value[1]?.id
+    selectedCompareFormateurIds.value = second ? [first, second] : [first]
   }
 }
 
@@ -1805,15 +1909,10 @@ watch(viewMode, () => {
     selectedFormateurId.value = formateurOptions.value[0].id
   }
 
-  if (viewMode.value === 'duo') {
-    if (!selectedCompareFormateurAId.value && formateurOptions.value[0]) {
-      selectedCompareFormateurAId.value = formateurOptions.value[0].id
-    }
-    if (!selectedCompareFormateurBId.value) {
-      const first = selectedCompareFormateurAId.value
-      const second = formateurOptions.value.find((f) => f.id !== first)
-      selectedCompareFormateurBId.value = second?.id || first || null
-    }
+  if (viewMode.value === 'duo' && selectedCompareFormateurIds.value.length === 0 && formateurOptions.value.length > 0) {
+    const first = formateurOptions.value[0]!.id
+    const second = formateurOptions.value[1]?.id
+    selectedCompareFormateurIds.value = second ? [first, second] : [first]
   }
 
   loadSchedule()
@@ -1829,18 +1928,6 @@ watch(selectedFormateurId, (id) => {
   if (!id) return
   const selected = formateurOptions.value.find((f) => f.id === id)
   if (selected) formateurSearch.value = selected.label
-})
-
-watch(selectedCompareFormateurAId, (id) => {
-  if (!id) return
-  const selected = formateurOptions.value.find((f) => f.id === id)
-  if (selected) compareFormateurASearch.value = selected.label
-})
-
-watch(selectedCompareFormateurBId, (id) => {
-  if (!id) return
-  const selected = formateurOptions.value.find((f) => f.id === id)
-  if (selected) compareFormateurBSearch.value = selected.label
 })
 
 watch(modalAssignmentId, (id) => {
@@ -1861,12 +1948,17 @@ watch(modalSalleId, (id) => {
   if (selected) modalSalleSearch.value = selected.nom_salle
 })
 
-watch([selectedPoleId, selectedFormateurId, selectedCompareFormateurAId, selectedCompareFormateurBId, currentWeekStart], () => {
+watch([selectedPoleId, selectedFormateurId, selectedCompareFormateurIds, currentWeekStart], () => {
   loadSchedule()
 })
 
 onMounted(async () => {
+  document.addEventListener('mousedown', handleMultiFormateurOutsideClick)
   await loadBaseData()
   await loadSchedule()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleMultiFormateurOutsideClick)
 })
 </script>
