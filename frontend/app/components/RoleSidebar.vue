@@ -154,7 +154,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Planification',
         items: [
           { label: 'Planning par pole', path: '/emploi-du-temps', icon: 'building' },
-          { label: 'Comparer 2 formateurs', path: '/emploi-du-temps?view=duo', icon: 'users' },
+          { label: 'Planning multi formateurs', path: '/emploi-du-temps?view=duo', icon: 'users' },
           { label: 'Planning par formateur', path: '/emploi-du-temps?view=formateur', icon: 'teacher' },
         ],
       },
