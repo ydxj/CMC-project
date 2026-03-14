@@ -51,7 +51,7 @@
                   class="rounded-md px-3 py-1.5 text-xs font-semibold transition"
                   :class="viewMode === 'formateur' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
                 >
-                  Par formateur
+                  Multi formateurs
                 </button>
                 <button
                   type="button"
@@ -65,34 +65,53 @@
             </div>
 
             <div v-if="viewMode === 'formateur'" class="block">
-              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Formateur</span>
+              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Formateurs (multi-selection)</span>
               <div class="relative">
                 <input
-                  v-model="formateurSearch"
+                  v-model="multiFormateurSearch"
                   type="text"
                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   placeholder="Rechercher un formateur..."
-                  @focus="showFormateurPicker = true"
-                  @input="showFormateurPicker = true"
-                  @blur="hideFormateurPicker"
+                  @focus="showMultiFormateurPicker = true"
+                  @input="showMultiFormateurPicker = true"
+                  @blur="hideMultiFormateurPicker"
                 />
                 <div
-                  v-if="showFormateurPicker"
+                  v-if="showMultiFormateurPicker"
                   class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
                 >
                   <button
                     v-for="f in filteredFormateurOptions"
                     :key="f.id"
                     type="button"
-                    class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                    :class="selectedFormateurId === f.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
-                    @mousedown.prevent="selectFormateurOption(f.id, f.label)"
+                    class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100"
+                    :class="selectedFormateurIds.includes(f.id) ? 'text-slate-900' : 'text-slate-700'"
+                    @mousedown.prevent="toggleFormateurSelection(f.id)"
                   >
-                    {{ f.label }}
+                    <span
+                      class="inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors"
+                      :style="selectedFormateurIds.includes(f.id)
+                        ? { backgroundColor: getFormateurColor(f.id)?.solid || '#64748b', borderColor: getFormateurColor(f.id)?.solid || '#64748b' }
+                        : { backgroundColor: 'transparent', borderColor: '#cbd5e1' }"
+                    ></span>
+                    <span :class="selectedFormateurIds.includes(f.id) ? 'font-semibold' : ''">{{ f.label }}</span>
                   </button>
                   <p v-if="!filteredFormateurOptions.length" class="px-2 py-2 text-xs text-slate-500">Aucun formateur trouve.</p>
                 </div>
               </div>
+              <div v-if="selectedFormateurIds.length > 0" class="mt-2 flex flex-wrap gap-1.5">
+                <span
+                  v-for="fId in selectedFormateurIds"
+                  :key="`chip-${fId}`"
+                  class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+                  :style="{ backgroundColor: getFormateurColor(fId)?.light || 'rgba(148,163,184,0.12)', borderColor: getFormateurColor(fId)?.border || '#94a3b8' }"
+                >
+                  <span class="inline-block h-2 w-2 rounded-full" :style="{ backgroundColor: getFormateurColor(fId)?.solid || '#94a3b8' }"></span>
+                  {{ getFormateurLabel(fId) }}
+                  <button type="button" class="ml-0.5 font-bold text-slate-500 hover:text-slate-900 focus:outline-none" @mousedown.prevent="removeFormateurSelection(fId)" aria-label="Retirer">&times;</button>
+                </span>
+              </div>
+              <p v-else class="mt-1.5 text-xs text-slate-400">Aucun formateur selectionne. Tapez pour en chercher.</p>
             </div>
 
             <div v-else class="block">
@@ -166,7 +185,20 @@
           <p class="mt-2 text-slate-600">Chargement...</p>
         </div>
 
-        <div v-else class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div v-if="viewMode === 'formateur' && selectedFormateurIds.length > 0" class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Legende:</span>
+          <span
+            v-for="fId in selectedFormateurIds"
+            :key="`legend-${fId}`"
+            class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+            :style="{ backgroundColor: getFormateurColor(fId)?.light || 'rgba(148,163,184,0.12)', borderColor: getFormateurColor(fId)?.border || '#94a3b8' }"
+          >
+            <span class="inline-block h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: getFormateurColor(fId)?.solid || '#64748b' }"></span>
+            {{ getFormateurLabel(fId) }}
+          </span>
+        </div>
+
+        <div v-if="!loading" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="overflow-x-auto">
             <table class="min-w-full select-none border-separate border-spacing-0" @mouseleave="endDrag(); cancelMove()">
               <thead>
@@ -203,6 +235,7 @@
                     <div
                       v-if="cell.session"
                       class="rounded-lg border border-slate-200 bg-white p-2.5 text-left shadow-sm"
+                      :style="getSessionCardStyle(cell.session)"
                       :class="{ 'cursor-move opacity-70': isMovingSession(cell.session) }"
                       @mousedown.prevent.stop="startMove(cell.session, dayIdx, cell.slotIdx ?? 0)"
                     >
@@ -504,6 +537,16 @@ const TIME_SLOTS = [
 ]
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+const FORMATEUR_COLOR_PALETTE = [
+  { bg: 'rgba(14, 165, 233, 0.18)', border: 'rgba(14, 165, 233, 0.55)', solid: '#0ea5e9', light: 'rgba(14, 165, 233, 0.10)' },
+  { bg: 'rgba(99, 102, 241, 0.18)', border: 'rgba(99, 102, 241, 0.55)', solid: '#6366f1', light: 'rgba(99, 102, 241, 0.10)' },
+  { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.55)', solid: '#10b981', light: 'rgba(16, 185, 129, 0.10)' },
+  { bg: 'rgba(244, 114, 182, 0.18)', border: 'rgba(244, 114, 182, 0.55)', solid: '#f472b6', light: 'rgba(244, 114, 182, 0.10)' },
+  { bg: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.55)', solid: '#fb923c', light: 'rgba(251, 146, 60, 0.10)' },
+  { bg: 'rgba(168, 85, 247, 0.18)', border: 'rgba(168, 85, 247, 0.55)', solid: '#a855f7', light: 'rgba(168, 85, 247, 0.10)' },
+  { bg: 'rgba(234, 179, 8, 0.18)', border: 'rgba(234, 179, 8, 0.55)', solid: '#eab308', light: 'rgba(234, 179, 8, 0.10)' },
+  { bg: 'rgba(20, 184, 166, 0.18)', border: 'rgba(20, 184, 166, 0.55)', solid: '#14b8a6', light: 'rgba(20, 184, 166, 0.10)' },
+] as const
 
 const api = useApi()
 const route = useRoute()
@@ -516,11 +559,11 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 
 const viewMode = ref<ViewMode>(route.query.view === 'groupe' ? 'groupe' : 'formateur')
-const selectedFormateurId = ref<number | null>(null)
+const selectedFormateurIds = ref<number[]>([])
 const selectedGroupeId = ref<number | null>(null)
-const formateurSearch = ref('')
+const multiFormateurSearch = ref('')
 const groupeSearch = ref('')
-const showFormateurPicker = ref(false)
+const showMultiFormateurPicker = ref(false)
 const showGroupePicker = ref(false)
 
 const allAssignments = ref<Assignment[]>([])
@@ -625,9 +668,22 @@ const groupeOptions = computed(() => {
 })
 
 const filteredFormateurOptions = computed(() => {
-  const query = formateurSearch.value.trim().toLowerCase()
-  if (!query) return formateurOptions.value
-  return formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
+  const query = multiFormateurSearch.value.trim().toLowerCase()
+  const base = !query ? formateurOptions.value : formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
+  return [...base].sort((a, b) => {
+    const aSelected = selectedFormateurIds.value.includes(a.id)
+    const bSelected = selectedFormateurIds.value.includes(b.id)
+    if (aSelected !== bSelected) return aSelected ? 1 : -1
+    return a.label.localeCompare(b.label)
+  })
+})
+
+const formateurColorMap = computed(() => {
+  const map = new Map<number, { bg: string; border: string; solid: string; light: string }>()
+  selectedFormateurIds.value.forEach((id, idx) => {
+    map.set(id, FORMATEUR_COLOR_PALETTE[idx % FORMATEUR_COLOR_PALETTE.length]!)
+  })
+  return map
 })
 
 const filteredGroupeOptions = computed(() => {
@@ -636,10 +692,18 @@ const filteredGroupeOptions = computed(() => {
   return groupeOptions.value.filter((g) => g.label.toLowerCase().includes(query))
 })
 
-function selectFormateurOption(id: number, label: string) {
-  selectedFormateurId.value = id
-  formateurSearch.value = label
-  showFormateurPicker.value = false
+function toggleFormateurSelection(id: number) {
+  const idx = selectedFormateurIds.value.indexOf(id)
+  if (idx === -1) {
+    selectedFormateurIds.value = [...selectedFormateurIds.value, id]
+  } else {
+    selectedFormateurIds.value = selectedFormateurIds.value.filter((fId) => fId !== id)
+  }
+  multiFormateurSearch.value = ''
+}
+
+function removeFormateurSelection(id: number) {
+  selectedFormateurIds.value = selectedFormateurIds.value.filter((fId) => fId !== id)
 }
 
 function selectGroupeOption(id: number, label: string) {
@@ -648,9 +712,9 @@ function selectGroupeOption(id: number, label: string) {
   showGroupePicker.value = false
 }
 
-function hideFormateurPicker() {
+function hideMultiFormateurPicker() {
   setTimeout(() => {
-    showFormateurPicker.value = false
+    showMultiFormateurPicker.value = false
   }, 120)
 }
 
@@ -687,8 +751,9 @@ function hideModalSallePicker() {
 }
 
 const filteredSchedule = computed(() => {
-  if (viewMode.value === 'formateur' && selectedFormateurId.value) {
-    return allSchedule.value.filter((s) => s.module_groupe_formateur.id_formateur === selectedFormateurId.value)
+  if (viewMode.value === 'formateur' && selectedFormateurIds.value.length > 0) {
+    const selectedIds = new Set(selectedFormateurIds.value)
+    return allSchedule.value.filter((s) => selectedIds.has(s.module_groupe_formateur.id_formateur))
   }
 
   if (viewMode.value === 'groupe' && selectedGroupeId.value) {
@@ -700,10 +765,30 @@ const filteredSchedule = computed(() => {
 
 const modalAssignments = computed(() => {
   if (viewMode.value === 'formateur') {
-    return allAssignments.value.filter((a) => a.id_formateur === selectedFormateurId.value)
+    if (selectedFormateurIds.value.length === 0) return allAssignments.value
+    const selectedIds = new Set(selectedFormateurIds.value)
+    return allAssignments.value.filter((a) => selectedIds.has(a.id_formateur))
   }
   return allAssignments.value.filter((a) => a.id_groupe === selectedGroupeId.value)
 })
+
+function getFormateurColor(id: number) {
+  return formateurColorMap.value.get(id) || null
+}
+
+function getFormateurLabel(id: number): string {
+  return formateurOptions.value.find((f) => f.id === id)?.label || `Formateur #${id}`
+}
+
+function getSessionCardStyle(session: Session): Record<string, string> {
+  if (viewMode.value !== 'formateur') return {}
+  const color = formateurColorMap.value.get(session.module_groupe_formateur.id_formateur)
+  if (!color) return {}
+  return {
+    backgroundColor: color.bg,
+    borderColor: color.border,
+  }
+}
 
 const filteredModalAssignments = computed(() => {
   const query = modalAssignmentSearch.value.trim().toLowerCase()
@@ -926,8 +1011,8 @@ function getConflictMessage(
 function startDrag(dayIdx: number, slotIdx: number) {
   if (movingSession.value) return
 
-  if (viewMode.value === 'formateur' && !selectedFormateurId.value) {
-    error.value = 'Choisissez un formateur avant de planifier.'
+  if (viewMode.value === 'formateur' && selectedFormateurIds.value.length === 0) {
+    error.value = 'Choisissez au moins un formateur avant de planifier.'
     return
   }
 
@@ -982,7 +1067,7 @@ function endDrag(dayIdx?: number, slotIdx?: number) {
     endTime,
     {
       groupeId: viewMode.value === 'groupe' ? selectedGroupeId.value : null,
-      formateurId: viewMode.value === 'formateur' ? selectedFormateurId.value : null,
+      formateurId: null,
     },
   )
 
@@ -1236,8 +1321,8 @@ async function loadBaseData() {
   allAssignments.value = Array.isArray(assignmentsRes) ? assignmentsRes : ((assignmentsRes as any)?.data || [])
   salles.value = Array.isArray(sallesRes) ? sallesRes : ((sallesRes as any)?.data || [])
 
-  if (!selectedFormateurId.value && formateurOptions.value[0]) {
-    selectedFormateurId.value = formateurOptions.value[0].id
+  if (selectedFormateurIds.value.length === 0 && formateurOptions.value.length > 0) {
+    selectedFormateurIds.value = [formateurOptions.value[0]!.id]
   }
 
   if (!selectedGroupeId.value && groupeOptions.value[0]) {
@@ -1252,10 +1337,6 @@ async function loadSchedule() {
   try {
     const params: Record<string, string | number> = {
       start_date: formatDateISO(currentWeekStart.value),
-    }
-
-    if (viewMode.value === 'formateur' && selectedFormateurId.value) {
-      params.id_formateur = selectedFormateurId.value
     }
 
     if (viewMode.value === 'groupe' && selectedGroupeId.value) {
@@ -1294,8 +1375,8 @@ const handleLogout = async () => {
 }
 
 watch(viewMode, () => {
-  if (viewMode.value === 'formateur' && !selectedFormateurId.value && formateurOptions.value[0]) {
-    selectedFormateurId.value = formateurOptions.value[0].id
+  if (viewMode.value === 'formateur' && selectedFormateurIds.value.length === 0 && formateurOptions.value[0]) {
+    selectedFormateurIds.value = [formateurOptions.value[0].id]
   }
 
   if (viewMode.value === 'groupe' && !selectedGroupeId.value && groupeOptions.value[0]) {
@@ -1304,12 +1385,6 @@ watch(viewMode, () => {
 
   router.replace({ query: { ...route.query, view: viewMode.value } })
   loadSchedule()
-})
-
-watch(selectedFormateurId, (id) => {
-  if (!id) return
-  const selected = formateurOptions.value.find((f) => f.id === id)
-  if (selected) formateurSearch.value = selected.label
 })
 
 watch(selectedGroupeId, (id) => {
@@ -1336,7 +1411,7 @@ watch(modalSalleId, (id) => {
   if (selected) modalSalleSearch.value = selected.nom_salle
 })
 
-watch([selectedFormateurId, selectedGroupeId, currentWeekStart], () => {
+watch([selectedFormateurIds, selectedGroupeId, currentWeekStart], () => {
   loadSchedule()
 })
 
