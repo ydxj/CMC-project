@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EmploiDuTemps;
 use App\Models\Formateur;
 use App\Models\Groupe;
 use App\Models\Module;
@@ -11,6 +12,36 @@ use Illuminate\Http\Request;
 
 class ModuleFormateurController extends Controller
 {
+    private function timeToMinutes(string $time): int
+    {
+        $hhmm = substr($time, 0, 5);
+        [$hours, $minutes] = array_pad(explode(':', $hhmm), 2, 0);
+        return ((int) $hours * 60) + (int) $minutes;
+    }
+
+    private function parseVolumeHours($value): float
+    {
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        if (!is_string($value)) {
+            return 0.0;
+        }
+
+        $normalized = str_replace(',', '.', trim($value));
+        if (preg_match('/\d+(\.\d+)?/', $normalized, $matches)) {
+            return (float) $matches[0];
+        }
+
+        return 0.0;
+    }
+
+    private function minutesToHours(int $minutes): float
+    {
+        return round($minutes / 60, 2);
+    }
+
     private function getChefPoleIds($user)
     {
         if (!$user || $user->role !== 'CHEF_POLE') {
@@ -417,6 +448,93 @@ class ModuleFormateurController extends Controller
             'success' => true,
             'formateur_id' => $formateur->id,
             'data' => $modules,
+        ]);
+    }
+
+    public function getMyModuleHours(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated',
+            ], 401);
+        }
+
+        $formateur = Formateur::where('id_user', $user->id)->first();
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No formateur profile found for current user',
+            ], 404);
+        }
+
+        $assignments = ModuleGroupeFormateur::where('id_formateur', $formateur->id)
+            ->with(['module', 'groupe'])
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'formateur_id' => $formateur->id,
+                'totals' => [
+                    'module_count' => 0,
+                    'planned_minutes' => 0,
+                    'planned_hours' => 0,
+                ],
+                'data' => [],
+            ]);
+        }
+
+        $assignmentIds = $assignments->pluck('id');
+        $scheduleEntries = EmploiDuTemps::whereIn('id_module_groupe_formateur', $assignmentIds)->get();
+
+        $plannedMinutesByAssignment = [];
+        foreach ($scheduleEntries as $entry) {
+            $duration = $this->timeToMinutes($entry->heure_fin) - $this->timeToMinutes($entry->heure_debut);
+            $duration = max(0, $duration);
+
+            $assignmentId = (int) $entry->id_module_groupe_formateur;
+            if (!array_key_exists($assignmentId, $plannedMinutesByAssignment)) {
+                $plannedMinutesByAssignment[$assignmentId] = 0;
+            }
+            $plannedMinutesByAssignment[$assignmentId] += $duration;
+        }
+
+        $rows = $assignments->map(function ($assignment) use ($plannedMinutesByAssignment) {
+            $assignmentId = (int) $assignment->id;
+            $plannedMinutes = (int) ($plannedMinutesByAssignment[$assignmentId] ?? 0);
+            $volumeHours = $this->parseVolumeHours($assignment->module->volume_horaire ?? 0);
+            $volumeMinutes = (int) round($volumeHours * 60);
+            $remainingMinutes = max(0, $volumeMinutes - $plannedMinutes);
+            $exceededMinutes = max(0, $plannedMinutes - $volumeMinutes);
+
+            return [
+                'assignment_id' => $assignmentId,
+                'module_id' => $assignment->module->id,
+                'nom_module' => $assignment->module->nom_module,
+                'groupe_id' => $assignment->groupe->id,
+                'nom_groupe' => $assignment->groupe->nom_groupe,
+                'volume_horaire' => $volumeHours,
+                'volume_minutes' => $volumeMinutes,
+                'planned_minutes' => $plannedMinutes,
+                'planned_hours' => $this->minutesToHours($plannedMinutes),
+                'remaining_minutes' => $remainingMinutes,
+                'remaining_hours' => $this->minutesToHours($remainingMinutes),
+                'exceeded_minutes' => $exceededMinutes,
+                'exceeded_hours' => $this->minutesToHours($exceededMinutes),
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'formateur_id' => $formateur->id,
+            'totals' => [
+                'module_count' => $rows->count(),
+                'planned_minutes' => (int) $rows->sum('planned_minutes'),
+                'planned_hours' => $this->minutesToHours((int) $rows->sum('planned_minutes')),
+            ],
+            'data' => $rows,
         ]);
     }
 }
