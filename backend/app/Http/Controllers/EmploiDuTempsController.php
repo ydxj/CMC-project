@@ -7,11 +7,25 @@ use App\Models\Formateur;
 use App\Models\ModuleGroupeFormateur;
 use App\Models\Pole;
 use App\Models\Salle;
+use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class EmploiDuTempsController extends Controller
 {
+    private function isPastScheduleDate(string $date): bool
+    {
+        return Carbon::parse($date)->startOfDay()->lt(Carbon::today());
+    }
+
+    private function pastScheduleLockedResponse()
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Les seances passees sont verrouillees et ne peuvent pas etre modifiees.',
+        ], 403);
+    }
+
     private function buildConflictQuery(string $date, string $start, string $end, ?int $ignoreScheduleId = null)
     {
         $query = EmploiDuTemps::query()
@@ -165,6 +179,10 @@ class EmploiDuTempsController extends Controller
             'id_salle' => 'required|integer|exists:salles,id',
         ]);
 
+        if ($this->isPastScheduleDate($data['date_seance'])) {
+            return $this->pastScheduleLockedResponse();
+        }
+
         $accessDenied = $this->validateChefScheduleData(
             $request,
             (int) $data['id_module'],
@@ -245,6 +263,10 @@ class EmploiDuTempsController extends Controller
             ], 404);
         }
 
+        if ($this->isPastScheduleDate($emploi->date_seance)) {
+            return $this->pastScheduleLockedResponse();
+        }
+
         $data = $request->validate([
             'date_seance' => 'sometimes|required|date',
             'heure_debut' => 'sometimes|required|date_format:H:i',
@@ -262,6 +284,10 @@ class EmploiDuTempsController extends Controller
         $targetDate = $data['date_seance'] ?? $emploi->date_seance;
         $targetStart = $data['heure_debut'] ?? $emploi->heure_debut;
         $targetEnd = $data['heure_fin'] ?? $emploi->heure_fin;
+
+        if ($this->isPastScheduleDate($targetDate)) {
+            return $this->pastScheduleLockedResponse();
+        }
 
         $accessDenied = $this->validateChefScheduleData(
             $request,
@@ -339,6 +365,10 @@ class EmploiDuTempsController extends Controller
                 'success' => false,
                 'message' => 'Emploi du temps not found',
             ], 404);
+        }
+
+        if ($this->isPastScheduleDate($emploi->date_seance)) {
+            return $this->pastScheduleLockedResponse();
         }
 
         $emploi->delete();

@@ -253,7 +253,8 @@
                       <div class="mt-2 flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          :disabled="isPastSession(cell.session)"
                           @click.stop="openEditModal(cell.session)"
                           title="Modifier"
                           aria-label="Modifier"
@@ -264,7 +265,8 @@
                         </button>
                         <button
                           type="button"
-                          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          :disabled="isPastSession(cell.session)"
                           @click.stop="deleteSession(cell.session)"
                           title="Supprimer"
                           aria-label="Supprimer"
@@ -635,6 +637,24 @@ function formatDateISO(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+function getTodayISO(): string {
+  return formatDateISO(new Date())
+}
+
+function isPastDate(dateISO: string): boolean {
+  return dateISO < getTodayISO()
+}
+
+function isPastDay(dayIdx: number): boolean {
+  const day = weekDays.value[dayIdx]
+  if (!day) return false
+  return isPastDate(formatDateISO(day.date))
+}
+
+function isPastSession(session: Session): boolean {
+  return isPastDate(session.date_seance)
+}
+
 const weekDays = computed(() =>
   DAY_NAMES.map((name, idx) => {
     const d = new Date(currentWeekStart.value)
@@ -918,6 +938,8 @@ function canMoveToTarget(dayIdx: number, slotIdx: number): boolean {
   const targetStart = SLOT_BOUNDARIES[slotIdx]
   if (!targetDay || !targetStart) return false
 
+  if (isPastDate(formatDateISO(targetDay))) return false
+
   const durationMinutes = toMinutes(movingSession.value.heure_fin) - toMinutes(movingSession.value.heure_debut)
   const newStartMin = toMinutes(targetStart)
   const newEndMin = newStartMin + durationMinutes
@@ -1011,6 +1033,11 @@ function getConflictMessage(
 function startDrag(dayIdx: number, slotIdx: number) {
   if (movingSession.value) return
 
+  if (isPastDay(dayIdx)) {
+    error.value = 'Les seances passees sont verrouillees et ne peuvent pas etre modifiees.'
+    return
+  }
+
   if (viewMode.value === 'formateur' && selectedFormateurIds.value.length === 0) {
     error.value = 'Choisissez au moins un formateur avant de planifier.'
     return
@@ -1103,6 +1130,11 @@ function isMovingSession(session: Session): boolean {
 }
 
 function startMove(session: Session, dayIdx: number, slotIdx: number) {
+  if (isPastSession(session)) {
+    error.value = 'Les seances passees sont verrouillees et ne peuvent pas etre modifiees.'
+    return
+  }
+
   error.value = null
   movingSession.value = session
   moveHoverDayIdx.value = dayIdx
@@ -1208,6 +1240,11 @@ function closeModal() {
 }
 
 function openEditModal(session: Session) {
+  if (isPastSession(session)) {
+    error.value = 'Les seances passees sont verrouillees et ne peuvent pas etre modifiees.'
+    return
+  }
+
   modalMode.value = 'edit'
   editingSessionId.value = session.id
   modalDate.value = session.date_seance
@@ -1226,6 +1263,11 @@ function openEditModal(session: Session) {
 }
 
 async function deleteSession(session: Session) {
+  if (isPastSession(session)) {
+    error.value = 'Les seances passees sont verrouillees et ne peuvent pas etre modifiees.'
+    return
+  }
+
   try {
     await api.delete(`/emploi-du-temps/${session.id}`)
     await loadSchedule()
@@ -1243,6 +1285,11 @@ function applyPresetDuration(durationMinutes: number) {
 }
 
 async function saveSession() {
+  if (isPastDate(modalDate.value)) {
+    modalError.value = 'Les seances passees sont verrouillees et ne peuvent pas etre modifiees.'
+    return
+  }
+
   if (!modalAssignmentId.value || !modalSalleId.value) {
     modalError.value = 'Choisissez une affectation et une salle.'
     return
