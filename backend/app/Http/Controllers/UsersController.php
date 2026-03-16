@@ -12,16 +12,49 @@ class UsersController extends Controller
 {
     public function index(Request $request)
     {
+        $role = $request->query('role');
+        $search = trim((string) $request->query('q', ''));
         $limit = $request->query('limit');
         $offset = $request->query('offset');
+        $hasFilters = $role !== null || $search !== '';
+        $hasPagination = $limit !== null || $offset !== null;
 
-        if ($limit === null && $offset === null) {
+        if (!$hasFilters && !$hasPagination) {
             return response()->json(
                 User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule')->get()
             );
         }
 
-        $query = User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule');
+        $baseQuery = User::query();
+
+        if ($role !== null) {
+            $baseQuery->where('role', $role);
+        }
+
+        if ($search !== '') {
+            $baseQuery->where(function ($q) use ($search) {
+                $q->where('nom', 'like', "%{$search}%")
+                    ->orWhere('prenom', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('matricule', 'like', "%{$search}%");
+            });
+        }
+
+        $total = (clone $baseQuery)->count();
+
+        $query = (clone $baseQuery)
+            ->select('users.id', 'users.nom', 'users.prenom', 'users.email', 'users.role', 'users.matricule');
+
+        if ($role === 'FORMATEUR') {
+            $query
+                ->leftJoin('formateurs', 'formateurs.id_user', '=', 'users.id')
+                ->leftJoin('formateur_pole', 'formateur_pole.id_user', '=', 'formateurs.id')
+                ->leftJoin('poles', 'poles.id', '=', 'formateur_pole.id_pole')
+                ->addSelect(DB::raw("COALESCE(GROUP_CONCAT(DISTINCT poles.nom_pole ORDER BY poles.nom_pole SEPARATOR '||'), '') as pole_names"))
+                ->groupBy('users.id', 'users.nom', 'users.prenom', 'users.email', 'users.role', 'users.matricule');
+        }
+
+        $query->orderBy('users.nom')->orderBy('users.prenom');
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
@@ -31,7 +64,32 @@ class UsersController extends Controller
             $query->take(max(0, (int) $limit));
         }
 
-        return response()->json($query->get());
+        $rows = $query->get()->map(function ($item) use ($role) {
+            $payload = [
+                'id' => $item->id,
+                'nom' => $item->nom,
+                'prenom' => $item->prenom,
+                'email' => $item->email,
+                'role' => $item->role,
+                'matricule' => $item->matricule,
+            ];
+
+            if ($role === 'FORMATEUR') {
+                $rawPoleNames = (string) ($item->pole_names ?? '');
+                $payload['pole_names'] = $rawPoleNames !== ''
+                    ? array_values(array_filter(explode('||', $rawPoleNames)))
+                    : [];
+            }
+
+            return $payload;
+        })->values();
+
+        return response()->json([
+            'data' => $rows,
+            'total' => $total,
+            'limit' => $limit !== null ? max(0, (int) $limit) : null,
+            'offset' => $offset !== null ? max(0, (int) $offset) : 0,
+        ]);
     }
 
     public function store(Request $request)

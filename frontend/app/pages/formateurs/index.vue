@@ -234,6 +234,7 @@ interface UserItem {
   email: string
   role: string
   matricule?: string
+  pole_names?: string[]
 }
 
 interface PoleItem {
@@ -270,7 +271,9 @@ const pageSize = 10
 const totalCount = ref(0)
 const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
 const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
+const isDirecteur = computed(() => authStore.user?.role === 'DIRECTEUR')
 const isPoleScoped = computed(() => isFormateur.value || isChefPole.value)
+const isBackendPaginated = computed(() => isPoleScoped.value || isDirecteur.value)
 const userPoleId = ref<number | null>(null)
 
 const fullName = computed(() => {
@@ -294,6 +297,10 @@ const userInitials = computed(() => {
 })
 
 const filteredFormateurs = computed(() => {
+  if (isDirecteur.value) {
+    return formateurs.value
+  }
+
   if (!searchQuery.value.trim()) return formateurs.value
 
   const query = searchQuery.value.toLowerCase()
@@ -325,9 +332,9 @@ const filteredFormateurs = computed(() => {
 })
 
 const totalPages = computed(() => {
-  if (isPoleScoped.value) {
-    // Backend pagination for formateur
-    return Math.ceil(totalCount.value / pageSize)
+  if (isBackendPaginated.value) {
+    const total = Math.ceil(totalCount.value / pageSize)
+    return total > 0 ? total : 1
   } else {
     // Frontend pagination for admin/director
     const total = Math.ceil(filteredFormateurs.value.length / pageSize)
@@ -336,7 +343,7 @@ const totalPages = computed(() => {
 })
 
 const paginatedFormateurs = computed(() => {
-  if (isPoleScoped.value) {
+  if (isBackendPaginated.value) {
     // Already paginated from backend
     return formateurs.value
   } else {
@@ -348,7 +355,7 @@ const paginatedFormateurs = computed(() => {
 })
 
 const paginationStart = computed(() => {
-  if (isPoleScoped.value) {
+  if (isBackendPaginated.value) {
     if (totalCount.value === 0) return 0
     return (currentPage.value - 1) * pageSize + 1
   } else {
@@ -358,7 +365,7 @@ const paginationStart = computed(() => {
 })
 
 const paginationEnd = computed(() => {
-  if (isPoleScoped.value) {
+  if (isBackendPaginated.value) {
     if (totalCount.value === 0) return 0
     return Math.min(currentPage.value * pageSize, totalCount.value)
   } else {
@@ -397,7 +404,7 @@ const paginationItems = computed<(number | '...')[]>(() => {
 })
 
 const paginationDisplay = computed(() => {
-  if (isPoleScoped.value) {
+  if (isBackendPaginated.value) {
     return `Affichage ${paginationStart.value}-${paginationEnd.value} sur ${totalCount.value} formateurs`
   } else {
     return `Affichage ${paginationStart.value}-${paginationEnd.value} sur ${filteredFormateurs.value.length} formateurs`
@@ -418,6 +425,16 @@ const goToNextPage = () => {
 }
 
 watch(searchQuery, () => {
+  if (isDirecteur.value) {
+    if (currentPage.value !== 1) {
+      currentPage.value = 1
+      return
+    }
+
+    loadFormateurs()
+    return
+  }
+
   currentPage.value = 1
 })
 
@@ -428,8 +445,8 @@ watch(filteredFormateurs, () => {
 })
 
 watch(currentPage, async () => {
-  if (isPoleScoped.value) {
-    // Reload data when page changes for formateur view
+  if (isBackendPaginated.value) {
+    // Reload data when page changes in backend-paginated views.
     await loadFormateurs()
   }
 })
@@ -504,45 +521,31 @@ const loadFormateurs = async () => {
 
       const allResponse = await api.get<any>('/my-poles-formateurs')
       totalCount.value = extractArray<FormateurItem>(allResponse).length
-    } else {
-      // For admin/director: load all formateurs with frontend pagination
-      const [usersRes, polesRes] = await Promise.all([
-        api.get<UserItem[]>('/users'),
-        api.get<PoleItem[]>('/poles'),
-      ])
+    } else if (isDirecteur.value) {
+      const offset = (currentPage.value - 1) * pageSize
+      const response = await api.get<any>('/users', {
+        role: 'FORMATEUR',
+        q: searchQuery.value.trim(),
+        limit: pageSize,
+        offset,
+      })
 
-      const users = extractArray<UserItem>(usersRes)
-      const poles = extractArray<PoleItem>(polesRes)
-
-      formateurs.value = users.filter((user) => user.role === 'FORMATEUR')
-
-      const poleRequests = poles.map((pole) => api.get<any>(`/poles/${pole.id}/formateurs`))
-      const poleResponses = await Promise.all(poleRequests)
+      const rows = extractArray<UserItem>(response)
+      formateurs.value = rows
+      totalCount.value = Number((response as any)?.total || rows.length)
 
       const mapping: Record<number, string[]> = {}
-
-      for (let i = 0; i < poles.length; i += 1) {
-        const pole = poles[i]
-        const response = poleResponses[i]
-
-        if (!pole || !response) continue
-
-        const entries = extractArray<any>(response)
-        entries.forEach((entry: any) => {
-          const userId = entry.id_user ?? entry.user?.id
-          if (!userId) return
-
-          if (!mapping[userId]) {
-            mapping[userId] = []
-          }
-
-          if (!mapping[userId].includes(pole.nom_pole)) {
-            mapping[userId].push(pole.nom_pole)
-          }
-        })
-      }
-
+      rows.forEach((row) => {
+        mapping[row.id] = Array.isArray(row.pole_names) ? row.pole_names : []
+      })
       poleByUserId.value = mapping
+    } else {
+      // Fallback for non-pole-scoped, non-directeur roles.
+      const usersRes = await api.get<UserItem[]>('/users')
+      const users = extractArray<UserItem>(usersRes)
+      formateurs.value = users.filter((user) => user.role === 'FORMATEUR')
+      totalCount.value = filteredFormateurs.value.length
+      poleByUserId.value = {}
     }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des formateurs'
