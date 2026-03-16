@@ -537,4 +537,95 @@ class ModuleFormateurController extends Controller
             'data' => $rows,
         ]);
     }
+
+    public function getFormateurModuleHours(Request $request, $id_formateur)
+    {
+        $formateur = Formateur::find($id_formateur);
+
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Formateur not found',
+            ], 404);
+        }
+
+        $chefPoleIds = $this->getChefPoleIds($request->user());
+        if ($chefPoleIds !== null) {
+            $allowed = $formateur->poles()->whereIn('poles.id', $chefPoleIds)->exists();
+            if (!$allowed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: this formateur does not belong to your pole',
+                ], 403);
+            }
+        }
+
+        $assignments = ModuleGroupeFormateur::where('id_formateur', $formateur->id)
+            ->with(['module', 'groupe'])
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'formateur_id' => $formateur->id,
+                'totals' => [
+                    'module_count' => 0,
+                    'planned_minutes' => 0,
+                    'planned_hours' => 0,
+                ],
+                'data' => [],
+            ]);
+        }
+
+        $assignmentIds = $assignments->pluck('id');
+        $scheduleEntries = EmploiDuTemps::whereIn('id_module_groupe_formateur', $assignmentIds)->get();
+
+        $plannedMinutesByAssignment = [];
+        foreach ($scheduleEntries as $entry) {
+            $duration = $this->timeToMinutes($entry->heure_fin) - $this->timeToMinutes($entry->heure_debut);
+            $duration = max(0, $duration);
+
+            $assignmentId = (int) $entry->id_module_groupe_formateur;
+            if (!array_key_exists($assignmentId, $plannedMinutesByAssignment)) {
+                $plannedMinutesByAssignment[$assignmentId] = 0;
+            }
+            $plannedMinutesByAssignment[$assignmentId] += $duration;
+        }
+
+        $rows = $assignments->map(function ($assignment) use ($plannedMinutesByAssignment) {
+            $assignmentId = (int) $assignment->id;
+            $plannedMinutes = (int) ($plannedMinutesByAssignment[$assignmentId] ?? 0);
+            $volumeHours = $this->parseVolumeHours($assignment->module->volume_horaire ?? 0);
+            $volumeMinutes = (int) round($volumeHours * 60);
+            $remainingMinutes = max(0, $volumeMinutes - $plannedMinutes);
+            $exceededMinutes = max(0, $plannedMinutes - $volumeMinutes);
+
+            return [
+                'assignment_id' => $assignmentId,
+                'module_id' => $assignment->module->id,
+                'nom_module' => $assignment->module->nom_module,
+                'groupe_id' => $assignment->groupe->id,
+                'nom_groupe' => $assignment->groupe->nom_groupe,
+                'volume_horaire' => $volumeHours,
+                'volume_minutes' => $volumeMinutes,
+                'planned_minutes' => $plannedMinutes,
+                'planned_hours' => $this->minutesToHours($plannedMinutes),
+                'remaining_minutes' => $remainingMinutes,
+                'remaining_hours' => $this->minutesToHours($remainingMinutes),
+                'exceeded_minutes' => $exceededMinutes,
+                'exceeded_hours' => $this->minutesToHours($exceededMinutes),
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'formateur_id' => $formateur->id,
+            'totals' => [
+                'module_count' => $rows->count(),
+                'planned_minutes' => (int) $rows->sum('planned_minutes'),
+                'planned_hours' => $this->minutesToHours((int) $rows->sum('planned_minutes')),
+            ],
+            'data' => $rows,
+        ]);
+    }
 }

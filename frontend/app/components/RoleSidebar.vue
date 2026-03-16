@@ -205,6 +205,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
           { label: 'Vue du pole', path: '/chef/emploi-temps', icon: 'calendar' },
           { label: 'Multi formateurs', path: '/chef/emploi-temps?view=formateur', icon: 'filter' },
           { label: 'Par groupe', path: '/chef/emploi-temps?view=groupe', icon: 'filter' },
+          { label: 'Suivi heures formateur', path: '/chef/emploi-temps/heures-modules', icon: 'clock' },
         ],
       },
     ],
