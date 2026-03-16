@@ -72,53 +72,6 @@
           </button>
         </div>
 
-        <section class="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p class="text-sm font-semibold text-slate-900">Suivi des Heures par Module</p>
-              <p class="text-xs text-slate-500">Heures planifiees dans l'emploi du temps comparees au volume du module.</p>
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">Modules: {{ moduleHours.length }}</span>
-              <span class="rounded-full bg-sky-100 px-2.5 py-1 font-semibold text-sky-700">Total planifie: {{ formatMinutes(totalPlannedMinutes) }}</span>
-            </div>
-          </div>
-
-          <div v-if="hoursLoading" class="py-4 text-center text-sm text-slate-500">Chargement des heures...</div>
-          <div v-else-if="hoursError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{{ hoursError }}</div>
-          <div v-else-if="moduleHours.length === 0" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            Aucun module assigne.
-          </div>
-          <div v-else class="overflow-x-auto">
-            <table class="min-w-full border-collapse text-xs">
-              <thead>
-                <tr class="bg-slate-50">
-                  <th class="border border-slate-200 px-3 py-2 text-left font-semibold uppercase tracking-wide text-slate-500">Module</th>
-                  <th class="border border-slate-200 px-3 py-2 text-left font-semibold uppercase tracking-wide text-slate-500">Groupe</th>
-                  <th class="border border-slate-200 px-3 py-2 text-right font-semibold uppercase tracking-wide text-slate-500">Volume Module</th>
-                  <th class="border border-slate-200 px-3 py-2 text-right font-semibold uppercase tracking-wide text-slate-500">Planifie</th>
-                  <th class="border border-slate-200 px-3 py-2 text-right font-semibold uppercase tracking-wide text-slate-500">Reste</th>
-                  <th class="border border-slate-200 px-3 py-2 text-right font-semibold uppercase tracking-wide text-slate-500">Depassement</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in moduleHours" :key="row.assignment_id" class="odd:bg-white even:bg-slate-50/30">
-                  <td class="border border-slate-200 px-3 py-2 text-slate-700">{{ row.nom_module }}</td>
-                  <td class="border border-slate-200 px-3 py-2 text-slate-600">{{ row.nom_groupe }}</td>
-                  <td class="border border-slate-200 px-3 py-2 text-right font-semibold text-slate-700">{{ formatMinutes(row.volume_minutes) }}</td>
-                  <td class="border border-slate-200 px-3 py-2 text-right font-semibold text-sky-700">{{ formatMinutes(row.planned_minutes) }}</td>
-                  <td class="border border-slate-200 px-3 py-2 text-right" :class="row.remaining_minutes === 0 ? 'font-semibold text-amber-700' : 'text-emerald-700'">
-                    {{ formatMinutes(row.remaining_minutes) }}
-                  </td>
-                  <td class="border border-slate-200 px-3 py-2 text-right" :class="row.exceeded_minutes > 0 ? 'font-semibold text-red-700' : 'text-slate-400'">
-                    {{ row.exceeded_minutes > 0 ? formatMinutes(row.exceeded_minutes) : '-' }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
         <!-- Loading -->
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <div class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-sky-600"></div>
@@ -321,22 +274,6 @@ interface DayCell {
   session: Session | null
 }
 
-interface ModuleHoursRow {
-  assignment_id: number
-  module_id: number
-  nom_module: string
-  groupe_id: number
-  nom_groupe: string
-  volume_horaire: number
-  volume_minutes: number
-  planned_minutes: number
-  planned_hours: number
-  remaining_minutes: number
-  remaining_hours: number
-  exceeded_minutes: number
-  exceeded_hours: number
-}
-
 const TIME_SLOTS = [
   { label: '8:30 - 11:00', start: '08:30' },
   { label: '11:00 - 13:30', start: '11:00' },
@@ -354,9 +291,6 @@ const isSidebarOpen = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const schedule = ref<Session[]>([])
-const moduleHours = ref<ModuleHoursRow[]>([])
-const hoursLoading = ref(false)
-const hoursError = ref<string | null>(null)
 const currentWeekStart = ref<Date>(getMonday(new Date()))
 
 function getMonday(date: Date): Date {
@@ -403,19 +337,10 @@ const weekLabel = computed(() => {
   return `Semaine du ${start.toLocaleDateString('fr-FR', opts)} au ${end.toLocaleDateString('fr-FR', opts)}`
 })
 
-const totalPlannedMinutes = computed(() => moduleHours.value.reduce((sum, row) => sum + row.planned_minutes, 0))
-
 function toMinutes(time: string): number {
   const hhmm = time.substring(0, 5)
   const [h = 0, m = 0] = hhmm.split(':').map(Number)
   return h * 60 + m
-}
-
-function formatMinutes(totalMinutes: number): string {
-  const safe = Math.max(0, Number(totalMinutes) || 0)
-  const h = Math.floor(safe / 60)
-  const m = safe % 60
-  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
 }
 
 function overlapsSlot(session: Session, slotIdx: number): boolean {
@@ -514,20 +439,6 @@ async function loadSchedule() {
   }
 }
 
-async function loadModuleHours() {
-  hoursLoading.value = true
-  hoursError.value = null
-
-  try {
-    const response = await api.get<{ success: boolean; data: ModuleHoursRow[] }>('/me/module-hours')
-    moduleHours.value = Array.isArray(response.data) ? response.data : []
-  } catch (err: any) {
-    hoursError.value = err?.data?.message || err?.message || 'Erreur lors du chargement des heures modules'
-  } finally {
-    hoursLoading.value = false
-  }
-}
-
 const handleLogout = async () => {
   isSidebarOpen.value = false
   await authStore.logout()
@@ -537,7 +448,6 @@ const handleLogout = async () => {
 watch(currentWeekStart, () => loadSchedule())
 
 onMounted(() => {
-  loadModuleHours()
   loadSchedule()
 })
 </script>

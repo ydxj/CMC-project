@@ -217,6 +217,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Mon Emploi du Temps',
         items: [
           { label: 'Vue hebdomadaire', path: '/formateur/emploi-temps', icon: 'table' },
+          { label: 'Suivi des heures', path: '/formateur/emploi-temps/heures-modules', icon: 'clock' },
         ],
       },
       {
