@@ -30,10 +30,8 @@
       <section
         v-for="group in menu.groups"
         :key="group.label"
-        class="mt-3 border-t border-slate-200 pt-3"
+        class="mt-3"
       >
-        <p class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ group.label }}</p>
-
         <div class="space-y-1">
           <NuxtLink
             v-for="item in group.items"
@@ -51,7 +49,7 @@
         </div>
       </section>
 
-      <section class="mt-3 border-t border-slate-200 pt-3">
+      <section class="mt-3">
         <NuxtLink
           :to="menu.settings.path"
           @click="handleNavigate"
@@ -119,35 +117,31 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Utilisateurs',
         items: [
-          { label: 'Liste des utilisateurs', path: '/users', icon: 'users' },
-          { label: 'Ajouter utilisateur', path: '/users/add', icon: 'user-plus' },
+          { label: 'Utilisateurs', path: '/users', icon: 'users' },
         ],
       },
       {
         label: 'Poles',
         items: [
-          { label: 'Liste des poles', path: '/poles', icon: 'building' },
-          { label: 'Ajouter pole', path: '/poles/add', icon: 'building' },
+          { label: 'Poles', path: '/poles', icon: 'building' },
         ],
       },
       {
         label: 'Salles & Ateliers',
         items: [
-          { label: 'Liste des salles', path: '/salles', icon: 'door' },
-          { label: 'Ajouter salle', path: '/salles/add', icon: 'door' },
+          { label: 'Salles', path: '/salles', icon: 'door' },
         ],
       },
       {
         label: 'Filieres',
         items: [
-          { label: 'Liste des filieres', path: '/filieres', icon: 'book' },
-          { label: 'Ajouter filiere', path: '/filieres/add', icon: 'book' },
+          { label: 'Filieres', path: '/filieres', icon: 'book' },
         ],
       },
       {
         label: 'Formateurs',
         items: [
-          { label: 'Liste des formateurs', path: '/formateurs', icon: 'teacher' },
+          { label: 'Formateurs', path: '/formateurs', icon: 'teacher' },
         ],
       },
       {
@@ -165,31 +159,27 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
     dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
     groups: [
       {
-        label: 'Formateurs',
+        label: 'Utilisateurs',
         items: [
-          { label: 'Liste des formateurs', path: '/chef/formateurs', icon: 'teacher' },
-          { label: 'Ajouter formateur', path: '/chef/formateurs/create', icon: 'user-plus' },
+          { label: 'Liste des utilisateurs', path: '/chef/formateurs', icon: 'teacher' },
         ],
       },
       {
         label: 'Filieres',
         items: [
           { label: 'Liste des filieres', path: '/chef/filieres', icon: 'book' },
-          { label: 'Ajouter filiere', path: '/chef/filieres/create', icon: 'book' },
         ],
       },
       {
         label: 'Groupes',
         items: [
           { label: 'Liste des groupes', path: '/chef/groupes', icon: 'group' },
-          { label: 'Ajouter groupe', path: '/chef/groupes/create', icon: 'group' },
         ],
       },
       {
         label: 'Modules',
         items: [
           { label: 'Liste des modules', path: '/chef/modules', icon: 'module' },
-          { label: 'Ajouter module', path: '/chef/modules/create', icon: 'module' },
           { label: 'Assigner a formateur', path: '/chef/modules/assign', icon: 'link' },
         ],
       },
