@@ -100,7 +100,12 @@
                     <span v-else class="text-slate-400 italic">Non assigne</span>
                   </td>
                   <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <button @click="viewFormateur(isPoleScoped ? (item as FormateurItem).user : (item as UserItem))" class="text-sky-600 hover:text-sky-900" title="Voir">
+                    <button
+                      type="button"
+                      @click="viewFormateur(isPoleScoped ? (item as FormateurItem).user : (item as UserItem))"
+                      class="text-sky-600 hover:text-sky-900"
+                      title="Voir"
+                    >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -166,6 +171,86 @@
         </div>
       </main>
     </div>
+
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="viewedFormateur"
+        class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px]"
+        @click="closeFormateurView"
+      />
+    </Transition>
+
+    <Transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="scale-95 opacity-0"
+      enter-to-class="scale-100 opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="scale-100 opacity-100"
+      leave-to-class="scale-95 opacity-0"
+    >
+      <div v-if="viewedFormateur" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <h3 class="text-lg font-bold text-slate-900">Details formateur</h3>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100"
+              @click="closeFormateurView"
+              aria-label="Close"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-4 p-6">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Nom complet</p>
+              <p class="mt-1 text-sm font-semibold text-slate-900">{{ viewedFormateur?.prenom }} {{ viewedFormateur?.nom }}</p>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Matricule</p>
+                <p class="mt-1 text-sm text-slate-800">{{ viewedFormateur?.matricule || '-' }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Role</p>
+                <p class="mt-1 text-sm text-slate-800">{{ roleLabelFromValue(viewedFormateur?.role) }}</p>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</p>
+              <p class="mt-1 break-all text-sm text-slate-800">{{ viewedFormateur?.email || '-' }}</p>
+            </div>
+
+            <div v-if="viewedFormateurPoleNames.length > 0">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pole(s)</p>
+              <p class="mt-1 text-sm text-slate-800">{{ viewedFormateurPoleNames.join(', ') }}</p>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button
+                type="button"
+                class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                @click="closeFormateurView"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <Transition
       enter-active-class="transition-opacity duration-200"
@@ -269,6 +354,7 @@ const poleByUserId = ref<Record<number, string[]>>({})
 const currentPage = ref(1)
 const pageSize = 10
 const totalCount = ref(0)
+const viewedFormateur = ref<UserItem | null>(null)
 const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
 const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
 const isDirecteur = computed(() => authStore.user?.role === 'DIRECTEUR')
@@ -282,12 +368,15 @@ const fullName = computed(() => {
 })
 
 const roleLabel = computed(() => {
-  const role = authStore.user?.role
+  return roleLabelFromValue(authStore.user?.role)
+})
+
+const roleLabelFromValue = (role?: string | null) => {
   if (role === 'DIRECTEUR') return 'Directeur Pedagogique'
   if (role === 'CHEF_POLE') return 'Chef de Pole'
   if (role === 'FORMATEUR') return 'Formateur'
   return role || 'Utilisateur'
-})
+}
 
 const userInitials = computed(() => {
   if (!authStore.user) return 'CM'
@@ -455,6 +544,11 @@ const getPoleNames = (userId: number): string[] => {
   return poleByUserId.value[userId] || []
 }
 
+const viewedFormateurPoleNames = computed(() => {
+  if (!viewedFormateur.value?.id) return []
+  return getPoleNames(viewedFormateur.value.id)
+})
+
 const extractArray = <T>(payload: unknown): T[] => {
   if (Array.isArray(payload)) {
     return payload as T[]
@@ -555,8 +649,13 @@ const loadFormateurs = async () => {
   }
 }
 
-const viewFormateur = (formateur: UserItem) => {
-  console.log('View formateur:', formateur)
+const viewFormateur = (formateur?: UserItem | null) => {
+  if (!formateur) return
+  viewedFormateur.value = formateur
+}
+
+const closeFormateurView = () => {
+  viewedFormateur.value = null
 }
 
 const handleLogout = async () => {
