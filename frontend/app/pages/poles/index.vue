@@ -66,15 +66,16 @@
           </div>
 
           <!-- Add Pole Button -->
-          <NuxtLink
-            to="/poles/add"
+          <button
+            type="button"
+            @click="openCreateModal"
             class="inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 transition-colors"
           >
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             Ajouter pôle
-          </NuxtLink>
+          </button>
         </div>
 
         <!-- Loading State -->
@@ -162,6 +163,107 @@
         </div>
       </main>
     </div>
+
+    <!-- Create Pole Modal -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showCreateModal"
+        class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+        @click.self="closeCreateModal"
+      >
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="showCreateModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">Ajouter pôle</h3>
+              <button
+                @click="closeCreateModal"
+                class="text-slate-500 hover:text-slate-700"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form @submit.prevent="createPole" class="p-6 space-y-4">
+              <div v-if="createError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-sm text-red-800">{{ createError }}</p>
+              </div>
+
+              <div v-if="createSuccess" class="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p class="text-sm text-green-800">{{ createSuccess }}</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Nom du pôle <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="createForm.nom_pole"
+                  type="text"
+                  required
+                  maxlength="100"
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Chef de pôle <span class="text-slate-400">(Optionnel)</span>
+                </label>
+                <select
+                  v-model.number="createForm.id_chef"
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
+                >
+                  <option :value="null">Aucun chef assigné</option>
+                  <option v-for="chef in chefs" :key="chef.id" :value="chef.id">
+                    {{ chef.prenom }} {{ chef.nom }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  @click="closeCreateModal"
+                  class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  :disabled="createSubmitting"
+                  class="px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="createSubmitting" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Création...
+                  </span>
+                  <span v-else>Créer le pôle</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
 
     <!-- Edit Pole Modal -->
     <Transition
@@ -410,6 +512,16 @@ const error = ref<string | null>(null)
 const searchQuery = ref('')
 const chefs = ref<Chef[]>([])
 
+// Create modal state
+const showCreateModal = ref(false)
+const createSubmitting = ref(false)
+const createError = ref<string | null>(null)
+const createSuccess = ref<string | null>(null)
+const createForm = ref({
+  nom_pole: '',
+  id_chef: null as number | null
+})
+
 // Edit modal state
 const showEditModal = ref(false)
 const editForm = ref({
@@ -487,6 +599,56 @@ const loadChefs = async () => {
     chefs.value = allUsers.filter((user: any) => user.role === 'CHEF_POLE')
   } catch (err: any) {
     console.error('Error loading chefs:', err)
+  }
+}
+
+const openCreateModal = () => {
+  createForm.value = {
+    nom_pole: '',
+    id_chef: null
+  }
+  createError.value = null
+  createSuccess.value = null
+  showCreateModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  createError.value = null
+  createSuccess.value = null
+}
+
+const createPole = async () => {
+  createError.value = null
+  createSuccess.value = null
+
+  if (!createForm.value.nom_pole.trim()) {
+    createError.value = 'Le nom du pôle est requis'
+    return
+  }
+
+  createSubmitting.value = true
+
+  try {
+    await api.post('/poles', {
+      nom_pole: createForm.value.nom_pole.trim(),
+      id_chef: createForm.value.id_chef,
+    })
+
+    createSuccess.value = 'Pôle créé avec succès !'
+    await loadPoles()
+    closeCreateModal()
+  } catch (err: any) {
+    console.error('Error creating pole:', err)
+
+    if (err.data && err.data.errors) {
+      const errors = Object.values(err.data.errors).flat()
+      createError.value = errors.join(', ')
+    } else {
+      createError.value = err.message || 'Erreur lors de la création du pôle'
+    }
+  } finally {
+    createSubmitting.value = false
   }
 }
 
