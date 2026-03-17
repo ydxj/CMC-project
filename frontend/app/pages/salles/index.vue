@@ -59,15 +59,16 @@
             </svg>
           </div>
 
-          <NuxtLink
-            to="/salles/add"
+          <button
+            type="button"
+            @click="openCreateModal"
             class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 font-medium text-white transition-colors hover:bg-sky-700"
           >
             <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             Ajouter salle
-          </NuxtLink>
+          </button>
         </div>
 
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -169,6 +170,124 @@
       leave-to-class="opacity-0"
     >
       <div
+        v-if="showCreateModal"
+        class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+        @click.self="closeCreateModal"
+      >
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="showCreateModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">Ajouter salle</h3>
+              <button
+                @click="closeCreateModal"
+                class="text-slate-500 hover:text-slate-700"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form @submit.prevent="createSalle" class="p-6 space-y-4">
+              <div v-if="createError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-sm text-red-800">{{ createError }}</p>
+              </div>
+
+              <div v-if="createSuccess" class="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p class="text-sm text-green-800">{{ createSuccess }}</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Type <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="createForm.type_salle"
+                  required
+                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="">Selectionner un type</option>
+                  <option value="SALLE">SALLE</option>
+                  <option value="ATELIER">ATELIER</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Pole <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model.number="createForm.id_pole"
+                  required
+                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
+                >
+                  <option :value="null">Selectionner un pole</option>
+                  <option v-for="pole in poles" :key="pole.id" :value="pole.id">
+                    {{ pole.nom_pole }}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Nom de la salle <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="createForm.nom_salle"
+                  @input="handleNameInput"
+                  type="text"
+                  required
+                  maxlength="100"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
+                  placeholder="Ex: SD01"
+                />
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  @click="closeCreateModal"
+                  class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  :disabled="createSubmitting"
+                  class="px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="createSubmitting" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Création...
+                  </span>
+                  <span v-else>Créer la salle</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
         v-if="isSidebarOpen"
         class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
         @click="isSidebarOpen = false"
@@ -211,7 +330,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../composables/useApi'
 import { useAuthStore } from '../../../stores/auth'
@@ -238,11 +357,24 @@ const api = useApi()
 const authStore = useAuthStore()
 
 const isSidebarOpen = ref(false)
+const poles = ref<Pole[]>([])
 const salles = ref<Salle[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
 const expandedPoles = ref<Record<string, boolean>>({})
+
+// Create modal state
+const showCreateModal = ref(false)
+const createSubmitting = ref(false)
+const createError = ref<string | null>(null)
+const createSuccess = ref<string | null>(null)
+const createForm = ref({
+  nom_salle: '',
+  type_salle: '',
+  id_pole: null as number | null,
+})
+const hasCustomName = ref(false)
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -290,6 +422,51 @@ const groupedSalles = computed(() => {
   return Array.from(groupedMap.values()).sort((a, b) => a.poleName.localeCompare(b.poleName))
 })
 
+const generatedSalleName = computed(() => {
+  if (!createForm.value.type_salle || createForm.value.id_pole === null) return ''
+
+  const selectedPole = poles.value.find((pole) => pole.id === createForm.value.id_pole)
+  if (!selectedPole) return ''
+
+  const typeInitial = createForm.value.type_salle === 'ATELIER' ? 'A' : 'S'
+  const cleanedPoleName = selectedPole.nom_pole
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+
+  const poleInitialMatch = cleanedPoleName.match(/[A-Za-z0-9]/)
+  const poleInitial = (poleInitialMatch ? poleInitialMatch[0] : 'X').toUpperCase()
+  const prefix = `${typeInitial}${poleInitial}`
+
+  const regex = new RegExp(`^${prefix}(\\d+)$`, 'i')
+  const maxSequence = salles.value.reduce((max, salle) => {
+    const name = (salle.nom_salle || '').trim().toUpperCase()
+    const match = name.match(regex)
+    if (!match) return max
+
+    const numberPart = match[1] ?? ''
+    const value = Number.parseInt(numberPart, 10)
+    if (Number.isNaN(value)) return max
+    return Math.max(max, value)
+  }, 0)
+
+  const nextSequence = String(maxSequence + 1).padStart(2, '0')
+  return `${prefix}${nextSequence}`
+})
+
+watch(generatedSalleName, (suggestedName) => {
+  if (!suggestedName) {
+    if (!hasCustomName.value) {
+      createForm.value.nom_salle = ''
+    }
+    return
+  }
+
+  if (!hasCustomName.value || !createForm.value.nom_salle.trim()) {
+    createForm.value.nom_salle = suggestedName
+  }
+})
+
 const isPoleExpanded = (poleKey: string): boolean => {
   if (searchQuery.value.trim()) {
     return true
@@ -300,6 +477,21 @@ const isPoleExpanded = (poleKey: string): boolean => {
 
 const togglePole = (poleKey: string) => {
   expandedPoles.value[poleKey] = !expandedPoles.value[poleKey]
+}
+
+const handleNameInput = () => {
+  const currentName = createForm.value.nom_salle.trim()
+  const suggestedName = generatedSalleName.value.trim()
+  hasCustomName.value = currentName.length > 0 && currentName !== suggestedName
+}
+
+const loadPoles = async () => {
+  try {
+    const response = await api.get<Pole[] | { data: Pole[] }>('/poles')
+    poles.value = Array.isArray(response) ? response : ((response as any).data || [])
+  } catch (err: any) {
+    console.error('Error loading poles:', err)
+  }
 }
 
 const loadSalles = async () => {
@@ -314,6 +506,59 @@ const loadSalles = async () => {
     console.error('Error loading salles:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const openCreateModal = () => {
+  createForm.value = {
+    nom_salle: '',
+    type_salle: '',
+    id_pole: null,
+  }
+  hasCustomName.value = false
+  createError.value = null
+  createSuccess.value = null
+  showCreateModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  createError.value = null
+  createSuccess.value = null
+}
+
+const createSalle = async () => {
+  createError.value = null
+  createSuccess.value = null
+
+  if (!createForm.value.nom_salle.trim() || !createForm.value.type_salle || createForm.value.id_pole === null) {
+    createError.value = 'Veuillez remplir tous les champs obligatoires.'
+    return
+  }
+
+  createSubmitting.value = true
+
+  try {
+    const payload = {
+      nom_salle: createForm.value.nom_salle.trim(),
+      type_salle: createForm.value.type_salle,
+      id_pole: createForm.value.id_pole,
+    }
+
+    await api.post('/salles', payload)
+    createSuccess.value = 'Salle creee avec succes !'
+    await loadSalles()
+    closeCreateModal()
+  } catch (err: any) {
+    console.error('Error creating salle:', err)
+    if (err.data && err.data.errors) {
+      const errors = Object.values(err.data.errors).flat()
+      createError.value = errors.join(', ')
+    } else {
+      createError.value = err.message || 'Erreur lors de la creation de la salle'
+    }
+  } finally {
+    createSubmitting.value = false
   }
 }
 
@@ -338,6 +583,7 @@ const handleLogout = async () => {
 }
 
 onMounted(() => {
+  loadPoles()
   loadSalles()
 })
 </script>
