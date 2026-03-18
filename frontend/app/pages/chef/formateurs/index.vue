@@ -18,7 +18,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 class="text-sm font-semibold text-slate-900">Mes Formateurs</h1>
+            <h1 class="text-sm font-semibold text-slate-900">Liste des utilisateurs</h1>
           </div>
 
           <div class="flex items-center gap-3">
@@ -42,8 +42,8 @@
       <main class="px-4 py-6 sm:px-6 lg:px-8">
         <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Gestion</p>
-          <h2 class="mt-2 text-2xl font-bold text-slate-900">Mes Formateurs</h2>
-          <p class="mt-2 text-sm text-slate-600">Liste des formateurs assignés à votre pôle</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">Liste des utilisateurs</h2>
+          <p class="mt-2 text-sm text-slate-600">Liste des formateurs assignes a votre pole</p>
         </section>
 
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -58,15 +58,23 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <button
-            @click="openAddModal"
-            class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Mutualiser formateur
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              @click="openCreateUserModal"
+              class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter utilisateur
+            </button>
+            <button
+              @click="openAddModal"
+              class="inline-flex items-center gap-2 rounded-lg border border-sky-600 bg-white px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50"
+            >
+              Affecter formateur
+            </button>
+          </div>
         </div>
 
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -175,7 +183,7 @@
       </main>
     </div>
 
-    <!-- Add Formateur Modal -->
+    <!-- Affecter Formateur Modal -->
     <Transition
       enter-active-class="transition-opacity duration-200"
       enter-from-class="opacity-0"
@@ -186,7 +194,7 @@
     >
       <div
         v-if="isModalOpen"
-        class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
+        class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px]"
         @click="closeModal"
       />
     </Transition>
@@ -202,7 +210,7 @@
       <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl">
           <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-            <h3 class="text-lg font-bold text-slate-900">Ajouter un formateur</h3>
+            <h3 class="text-lg font-bold text-slate-900">Affecter un formateur</h3>
             <button
               type="button"
               class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100"
@@ -243,10 +251,114 @@
                 :disabled="!selectedFormateur || isAdding"
                 @click="addFormateur"
               >
-                {{ isAdding ? 'Ajout en cours...' : 'Ajouter' }}
+                {{ isAdding ? 'Affectation...' : 'Affecter' }}
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Ajouter Utilisateur Modal -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isCreateUserModalOpen"
+        class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px]"
+        @click="closeCreateUserModal"
+      />
+    </Transition>
+
+    <Transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="scale-95 opacity-0"
+      enter-to-class="scale-100 opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="scale-100 opacity-100"
+      leave-to-class="scale-95 opacity-0"
+    >
+      <div v-if="isCreateUserModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <h3 class="text-lg font-bold text-slate-900">Ajouter utilisateur</h3>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100"
+              @click="closeCreateUserModal"
+              aria-label="Close"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <form class="space-y-4 p-6" @submit.prevent="createUserFromModal">
+            <div v-if="createUserError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {{ createUserError }}
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Nom</label>
+                <input v-model="createUserForm.nom" required class="w-full rounded-lg border border-slate-300 px-3 py-2" type="text" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Prenom</label>
+                <input v-model="createUserForm.prenom" required class="w-full rounded-lg border border-slate-300 px-3 py-2" type="text" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                <input v-model="createUserForm.email" required class="w-full rounded-lg border border-slate-300 px-3 py-2" type="email" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Matricule</label>
+                <input v-model="createUserForm.matricule" required class="w-full rounded-lg border border-slate-300 px-3 py-2" type="text" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Mot de passe</label>
+                <input v-model="createUserForm.password" required minlength="6" class="w-full rounded-lg border border-slate-300 px-3 py-2" type="password" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Type formateur</label>
+                <select v-model="createUserForm.type_formateur" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                  <option value="FP">FP</option>
+                  <option value="FV">FV</option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">MHS</label>
+                <input v-model.number="createUserForm.MHS" min="0" class="w-full rounded-lg border border-slate-300 px-3 py-2" type="number" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">NBR semaine</label>
+                <input v-model.number="createUserForm.NBR_semaine" min="0" class="w-full rounded-lg border border-slate-300 px-3 py-2" type="number" />
+              </div>
+            </div>
+
+            <div class="flex gap-3 border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                class="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                @click="closeCreateUserModal"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                class="flex-1 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="isCreatingUser"
+              >
+                {{ isCreatingUser ? 'Creation...' : 'Creer utilisateur' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </Transition>
@@ -335,16 +447,29 @@ const authStore = useAuthStore()
 
 const isSidebarOpen = ref(false)
 const isModalOpen = ref(false)
+const isCreateUserModalOpen = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const createUserError = ref<string | null>(null)
 const searchQuery = ref('')
 const formateurs = ref<Formateur[]>([])
 const allFormateurs = ref<UserItem[]>([])
 const selectedFormateur = ref<number | string>('')
 const isAdding = ref(false)
+const isCreatingUser = ref(false)
 const userPoleId = ref<number | null>(null)
 const currentPage = ref(1)
 const pageSize = 10
+const createUserForm = ref({
+  nom: '',
+  prenom: '',
+  email: '',
+  matricule: '',
+  password: '',
+  type_formateur: 'FP',
+  MHS: 0,
+  NBR_semaine: 0,
+})
 
 const userPole = computed(() => {
   const user = authStore.user
@@ -509,6 +634,7 @@ const loadFormateurs = async () => {
 }
 
 const openAddModal = () => {
+  isCreateUserModalOpen.value = false
   isModalOpen.value = true
   selectedFormateur.value = ''
 }
@@ -516,6 +642,67 @@ const openAddModal = () => {
 const closeModal = () => {
   isModalOpen.value = false
   selectedFormateur.value = ''
+}
+
+const resetCreateUserForm = () => {
+  createUserForm.value = {
+    nom: '',
+    prenom: '',
+    email: '',
+    matricule: '',
+    password: '',
+    type_formateur: 'FP',
+    MHS: 0,
+    NBR_semaine: 0,
+  }
+  createUserError.value = null
+}
+
+const openCreateUserModal = () => {
+  isModalOpen.value = false
+  resetCreateUserForm()
+  isCreateUserModalOpen.value = true
+}
+
+const closeCreateUserModal = () => {
+  isCreateUserModalOpen.value = false
+  createUserError.value = null
+}
+
+const createUserFromModal = async () => {
+  isCreatingUser.value = true
+  createUserError.value = null
+
+  try {
+    if (!userPoleId.value) {
+      const response = await api.get<any>('/my-poles-formateurs')
+      userPoleId.value = (response as any)?.pole_id || null
+    }
+
+    if (!userPoleId.value) {
+      throw new Error('Impossible de trouver votre pole')
+    }
+
+    await api.post('/users', {
+      nom: createUserForm.value.nom,
+      prenom: createUserForm.value.prenom,
+      email: createUserForm.value.email,
+      password: createUserForm.value.password,
+      role: 'FORMATEUR',
+      matricule: createUserForm.value.matricule,
+      type_formateur: createUserForm.value.type_formateur,
+      MHS: createUserForm.value.MHS,
+      NBR_semaine: createUserForm.value.NBR_semaine,
+      id_pole: userPoleId.value,
+    })
+
+    await loadFormateurs()
+    closeCreateUserModal()
+  } catch (err: any) {
+    createUserError.value = err?.data?.message || err?.message || 'Erreur lors de la creation du formateur'
+  } finally {
+    isCreatingUser.value = false
+  }
 }
 
 const addFormateur = async () => {
