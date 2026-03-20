@@ -46,13 +46,23 @@
           <p class="mt-2 text-sm text-slate-600">Salles et ateliers de votre pole uniquement.</p>
         </section>
 
-        <div class="mb-6">
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Rechercher une salle..."
             class="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm"
           />
+          <button
+            type="button"
+            @click="openCreateModal"
+            class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Ajouter salle
+          </button>
         </div>
 
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -99,6 +109,82 @@
         </div>
       </main>
     </div>
+
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showCreateModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[1px]"
+        @click.self="closeCreateModal"
+      >
+        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <h3 class="text-lg font-bold text-slate-900">Ajouter salle</h3>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100"
+              @click="closeCreateModal"
+              aria-label="Close"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <form class="space-y-4 p-6" @submit.prevent="createSalle">
+            <div v-if="createError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {{ createError }}
+            </div>
+
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Nom salle</label>
+              <input
+                v-model="createForm.nom_salle"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Type</label>
+              <select
+                v-model="createForm.type_salle"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2"
+              >
+                <option value="SALLE">SALLE</option>
+                <option value="ATELIER">ATELIER</option>
+              </select>
+            </div>
+
+            <div class="flex gap-3 border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                class="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                @click="closeCreateModal"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                class="flex-1 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+                :disabled="createSubmitting"
+              >
+                {{ createSubmitting ? 'Creation...' : 'Creer salle' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
 
     <Transition
       enter-active-class="transition-opacity duration-200"
@@ -177,6 +263,14 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
 const salles = ref<SalleItem[]>([])
+const showCreateModal = ref(false)
+const createSubmitting = ref(false)
+const createError = ref<string | null>(null)
+const poleId = ref<number | null>(null)
+const createForm = ref({
+  nom_salle: '',
+  type_salle: 'SALLE' as 'SALLE' | 'ATELIER',
+})
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -221,6 +315,53 @@ const loadSalles = async () => {
     error.value = err?.data?.message || err?.message || 'Erreur lors du chargement des salles'
   } finally {
     loading.value = false
+  }
+}
+
+const resolveChefPole = async () => {
+  const response = await api.get<any>('/my-poles-formateurs')
+  const chefPoleId = (response as any)?.pole_id
+  if (!chefPoleId) {
+    throw new Error('Impossible de trouver votre pole')
+  }
+  poleId.value = chefPoleId
+}
+
+const openCreateModal = () => {
+  createForm.value = {
+    nom_salle: '',
+    type_salle: 'SALLE',
+  }
+  createError.value = null
+  showCreateModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  createError.value = null
+}
+
+const createSalle = async () => {
+  createSubmitting.value = true
+  createError.value = null
+
+  try {
+    if (!poleId.value) {
+      await resolveChefPole()
+    }
+
+    await api.post('/salles', {
+      nom_salle: createForm.value.nom_salle,
+      type_salle: createForm.value.type_salle,
+      id_pole: poleId.value,
+    })
+
+    await loadSalles()
+    closeCreateModal()
+  } catch (err: any) {
+    createError.value = err?.data?.message || err?.message || 'Erreur lors de la creation de la salle'
+  } finally {
+    createSubmitting.value = false
   }
 }
 
