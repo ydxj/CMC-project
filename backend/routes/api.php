@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EtablissementsController;
 use App\Http\Controllers\EmploiDuTempsController;
 use App\Http\Controllers\FiliersController;
 use App\Http\Controllers\GroupesController;
@@ -24,8 +25,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/dashboard/stats', [DashboardController::class, 'getStats']);
 
-    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP')->group(function () {
+    Route::middleware('role:DOSI')->group(function () {
         Route::resource('users', UsersController::class);
+        Route::resource('etablissements', EtablissementsController::class);
     });
 
     Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
