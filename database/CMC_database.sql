@@ -6,10 +6,13 @@ CREATE TABLE etablissements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom_etablissement VARCHAR(150) NOT NULL UNIQUE,
     type_etablissement ENUM('CMC', 'EFP') NOT NULL,
-    region VARCHAR(100) NOT NULL,
+    city_id INT NOT NULL,
     id_directeur INT UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (city_id) REFERENCES ville(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
 -- USERS TABLE (Updated for multi-establishment)
