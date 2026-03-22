@@ -10,6 +10,7 @@ class Formateur extends Model
 
     protected $fillable = [
         'id_user',
+        'id_etablissement',
         'type_formateur',
         'MHS',
         'NBR_semaine',
@@ -24,7 +25,12 @@ class Formateur extends Model
 
     public function poles()
     {
-        return $this->belongsToMany(Pole::class, 'formateur_pole', 'id_user', 'id_pole');
+        return $this->belongsToMany(Pole::class, 'formateur_pole', 'id_formateur', 'id_pole');
+    }
+
+    public function etablissement()
+    {
+        return $this->belongsTo(Etablissement::class, 'id_etablissement');
     }
 
     public function moduleGroupeFormateurs()

@@ -25,15 +25,15 @@ class DashboardController extends Controller
 
         $role = $user->role;
 
-        if ($role === 'DIRECTEUR') {
-            return $this->getDirecteurStats();
+        if ($role === User::ROLE_DOSI || $role === User::ROLE_DIRECTEUR_CMC || $role === User::ROLE_DIRECTEUR_EFP) {
+            return $this->getDirecteurStats($user);
         }
 
-        if ($role === 'CHEF_POLE') {
+        if ($role === User::ROLE_CHEF_POLE) {
             return $this->getChefPoleStats($user->id);
         }
 
-        if ($role === 'FORMATEUR') {
+        if ($role === User::ROLE_FORMATEUR) {
             return $this->getFormateurStats($user->id);
         }
 
@@ -43,12 +43,26 @@ class DashboardController extends Controller
         ], 400);
     }
 
-    private function getDirecteurStats()
+    private function getDirecteurStats(User $user)
     {
-        $poles = Pole::count();
-        $salles = Salle::count();
-        $formateurs = User::where('role', 'FORMATEUR')->count();
-        $modules = Module::count();
+        $poleQuery = Pole::query();
+        $salleQuery = Salle::query();
+        $moduleQuery = Module::query();
+        $formateurQuery = User::where('role', User::ROLE_FORMATEUR);
+
+        if ($user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $poleQuery->where('id_etablissement', $user->id_etablissement);
+            $salleQuery->where('id_etablissement', $user->id_etablissement);
+            $formateurQuery->where('id_etablissement', $user->id_etablissement);
+            $moduleQuery->whereHas('filiere', function ($q) use ($user) {
+                $q->where('id_etablissement', $user->id_etablissement);
+            });
+        }
+
+        $poles = $poleQuery->count();
+        $salles = $salleQuery->count();
+        $formateurs = $formateurQuery->count();
+        $modules = $moduleQuery->count();
 
         return response()->json([
             'success' => true,
