@@ -32,7 +32,7 @@ class EtablissementsController extends Controller
         $data = $request->validate([
             'nom_etablissement' => 'required|string|max:150|unique:etablissements,nom_etablissement',
             'type_etablissement' => 'required|in:CMC,EFP',
-            'region' => 'required|string|max:100',
+            'city_id' => 'required|integer|exists:ville,id',
             'id_directeur' => 'nullable|integer|exists:users,id',
         ]);
 
@@ -58,7 +58,7 @@ class EtablissementsController extends Controller
             $etablissement = Etablissement::create([
                 'nom_etablissement' => $data['nom_etablissement'],
                 'type_etablissement' => $data['type_etablissement'],
-                'region' => $data['region'],
+                'city_id' => $data['city_id'],
                 'id_directeur' => $data['id_directeur'] ?? null,
             ]);
 
@@ -105,7 +105,7 @@ class EtablissementsController extends Controller
         $data = $request->validate([
             'nom_etablissement' => 'sometimes|required|string|max:150|unique:etablissements,nom_etablissement,' . $id,
             'type_etablissement' => 'sometimes|required|in:CMC,EFP',
-            'region' => 'sometimes|required|string|max:100',
+            'city_id' => 'sometimes|required|integer|exists:ville,id',
             'id_directeur' => 'sometimes|nullable|integer|exists:users,id',
         ]);
 
@@ -134,7 +134,7 @@ class EtablissementsController extends Controller
             $etablissement->update([
                 'nom_etablissement' => $data['nom_etablissement'] ?? $etablissement->nom_etablissement,
                 'type_etablissement' => $data['type_etablissement'] ?? $etablissement->type_etablissement,
-                'region' => $data['region'] ?? $etablissement->region,
+                'city_id' => $data['city_id'] ?? $etablissement->city_id,
                 'id_directeur' => array_key_exists('id_directeur', $data) ? $data['id_directeur'] : $etablissement->id_directeur,
             ]);
 

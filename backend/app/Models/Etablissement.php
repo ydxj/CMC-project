@@ -11,7 +11,7 @@ class Etablissement extends Model
     protected $fillable = [
         'nom_etablissement',
         'type_etablissement',
-        'region',
+        'city_id',
         'id_directeur',
     ];
 

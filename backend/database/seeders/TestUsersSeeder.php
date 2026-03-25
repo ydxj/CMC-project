@@ -17,11 +17,19 @@ class TestUsersSeeder extends Seeder
      */
     public function run(): void
     {
+        $cityId = DB::table('ville')
+            ->where('ville', 'Casablanca')
+            ->value('id') ?? DB::table('ville')->value('id');
+
+        if (!$cityId) {
+            throw new \RuntimeException('No city found in table `ville`. Seed region/city data before running TestUsersSeeder.');
+        }
+
         $etablissement = Etablissement::updateOrCreate(
             ['nom_etablissement' => 'CMC Principal'],
             [
                 'type_etablissement' => 'CMC',
-                'region' => 'Casablanca-Settat',
+                'city_id' => $cityId,
                 'id_directeur' => null,
             ]
         );
