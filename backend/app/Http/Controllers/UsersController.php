@@ -16,10 +16,14 @@ class UsersController extends Controller
         $actor = $request->user();
         $role = $request->query('role');
         $search = trim((string) $request->query('q', ''));
+        $page = $request->query('page');
+        $perPage = max(1, min((int) $request->query('per_page', 25), 100));
         $limit = $request->query('limit');
         $offset = $request->query('offset');
         $hasFilters = $role !== null || $search !== '';
-        $hasPagination = $limit !== null || $offset !== null;
+        $hasModernPagination = $page !== null;
+        $hasLegacyPagination = $limit !== null || $offset !== null;
+        $hasPagination = $hasModernPagination || $hasLegacyPagination;
 
         if (!$hasFilters && !$hasPagination) {
             $query = User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule', 'id_etablissement');
@@ -52,8 +56,6 @@ class UsersController extends Controller
             });
         }
 
-        $total = (clone $baseQuery)->count();
-
         $query = (clone $baseQuery)
             ->select('users.id', 'users.nom', 'users.prenom', 'users.email', 'users.role', 'users.matricule', 'users.id_etablissement');
 
@@ -67,6 +69,14 @@ class UsersController extends Controller
         }
 
         $query->orderBy('users.nom')->orderBy('users.prenom');
+
+        // Modern pagination with page/per_page
+        if ($hasModernPagination) {
+            return response()->json($query->paginate($perPage));
+        }
+
+        // Legacy pagination with limit/offset
+        $total = (clone $baseQuery)->count();
 
         if ($offset !== null) {
             $query->skip(max(0, (int) $offset));
