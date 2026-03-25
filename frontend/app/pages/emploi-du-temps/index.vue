@@ -666,7 +666,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../../composables/useApi'
 import { useAuthStore } from '../../../stores/auth'
 
-definePageMeta({ middleware: ['auth'] })
+definePageMeta({
+  middleware: ['auth'],
+})
 
 type ViewMode = 'pole' | 'duo' | 'formateur'
 
@@ -1962,3 +1964,4 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handleMultiFormateurOutsideClick)
 })
 </script>
+

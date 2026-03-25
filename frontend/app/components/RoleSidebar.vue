@@ -70,7 +70,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-type RoleKey = 'DOSI' | 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+type RoleKey = 'DOSI' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 type IconName =
   | 'home'
   | 'users'
@@ -124,49 +124,87 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
     ],
     settings: { label: 'Parametres', path: '/settings', icon: 'settings' },
   },
-  DIRECTEUR: {
-    dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
+  DIRECTEUR_CMC: {
+    dashboard: { label: 'Dashboard', path: '/cmc', icon: 'home' },
     groups: [
       {
         label: 'Utilisateurs',
         items: [
-          { label: 'Utilisateurs', path: '/users', icon: 'users' },
+          { label: 'Utilisateurs', path: '/cmc/users', icon: 'users' },
         ],
       },
       {
         label: 'Poles',
         items: [
-          { label: 'Poles', path: '/poles', icon: 'building' },
+          { label: 'Poles', path: '/cmc/poles', icon: 'building' },
         ],
       },
       {
         label: 'Salles & Ateliers',
         items: [
-          { label: 'Salles', path: '/salles', icon: 'door' },
+          { label: 'Salles', path: '/cmc/salles', icon: 'door' },
         ],
       },
       {
         label: 'Filieres',
         items: [
-          { label: 'Filieres', path: '/filieres', icon: 'book' },
+          { label: 'Filieres', path: '/cmc/filieres', icon: 'book' },
         ],
       },
       {
         label: 'Formateurs',
         items: [
-          { label: 'Formateurs', path: '/formateurs', icon: 'teacher' },
+          { label: 'Formateurs', path: '/cmc/formateurs', icon: 'teacher' },
         ],
       },
       {
         label: 'Planification',
         items: [
-          { label: 'Planning par pole', path: '/emploi-du-temps', icon: 'building' },
-          { label: 'Planning multi formateurs', path: '/emploi-du-temps?view=duo', icon: 'users' },
-          { label: 'Planning par formateur', path: '/emploi-du-temps?view=formateur', icon: 'teacher' },
+          { label: 'Planning par pole', path: '/cmc/emploi-du-temps', icon: 'building' },
+          { label: 'Planning multi formateurs', path: '/cmc/emploi-du-temps?view=duo', icon: 'users' },
+          { label: 'Planning par formateur', path: '/cmc/emploi-du-temps?view=formateur', icon: 'teacher' },
         ],
       },
     ],
-    settings: { label: 'Parametres', path: '/settings', icon: 'settings' },
+    settings: { label: 'Parametres', path: '/cmc/settings', icon: 'settings' },
+  },
+  DIRECTEUR_EFP: {
+    dashboard: { label: 'Dashboard', path: '/efp', icon: 'home' },
+    groups: [
+      {
+        label: 'Utilisateurs',
+        items: [
+          { label: 'Utilisateurs', path: '/efp/users', icon: 'users' },
+        ],
+      },
+      {
+        label: 'Salles & Ateliers',
+        items: [
+          { label: 'Salles', path: '/efp/salles', icon: 'door' },
+        ],
+      },
+      {
+        label: 'Filieres',
+        items: [
+          { label: 'Filieres', path: '/efp/filieres', icon: 'book' },
+        ],
+      },
+      {
+        label: 'Formateurs',
+        items: [
+          { label: 'Formateurs', path: '/efp/formateurs', icon: 'teacher' },
+        ],
+      },
+      {
+        label: 'Planification',
+        items: [
+          { label: 'Planning general', path: '/efp/emploi-du-temps', icon: 'calendar' },
+          { label: 'Planning multi formateurs', path: '/efp/emploi-du-temps?view=duo', icon: 'users' },
+          { label: 'Planning par formateur', path: '/efp/emploi-du-temps?view=formateur', icon: 'teacher' },
+        ],
+      },
+    ],
+    settings: { label: 'Parametres', path: '/efp/settings', icon: 'settings' },
   },
   CHEF_POLE: {
     dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
@@ -262,14 +300,16 @@ const iconPaths: Record<IconName, string> = {
 
 const roleKey = computed<RoleKey>(() => {
   if (props.role === 'DOSI') return 'DOSI'
-  if (props.role === 'DIRECTEUR' || props.role === 'DIRECTEUR_CMC' || props.role === 'DIRECTEUR_EFP') return 'DIRECTEUR'
+  if (props.role === 'DIRECTEUR_EFP') return 'DIRECTEUR_EFP'
+  if (props.role === 'DIRECTEUR' || props.role === 'DIRECTEUR_CMC') return 'DIRECTEUR_CMC'
   if (props.role === 'CHEF_POLE') return 'CHEF_POLE'
   return 'FORMATEUR'
 })
 
 const roleLabel = computed(() => {
   if (roleKey.value === 'DOSI') return 'DOSI'
-  if (roleKey.value === 'DIRECTEUR') return 'Directeur'
+  if (roleKey.value === 'DIRECTEUR_CMC') return 'Directeur CMC'
+  if (roleKey.value === 'DIRECTEUR_EFP') return 'Directeur EFP'
   if (roleKey.value === 'CHEF_POLE') return 'Chef de pole'
   return 'Formateur'
 })

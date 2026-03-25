@@ -214,6 +214,10 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useApi } from '../../composables/useApi'
 
+definePageMeta({
+  middleware: ['auth'],
+})
+
 interface UserItem {
   id: number
   role: string
@@ -419,3 +423,4 @@ onMounted(async () => {
   await loadDashboardStats()
 })
 </script>
+

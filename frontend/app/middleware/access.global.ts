@@ -5,10 +5,18 @@ type RoleKey = 'DOSI' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMA
 
 const roleRoutePrefixes: Record<RoleKey, string[]> = {
   DOSI: ['/dashboard', '/dosi', '/settings'],
-  DIRECTEUR_CMC: ['/dashboard', '/poles', '/salles', '/formateurs', '/filieres', '/emploi-du-temps', '/settings'],
-  DIRECTEUR_EFP: ['/dashboard', '/poles', '/salles', '/formateurs', '/filieres', '/emploi-du-temps', '/settings'],
+  DIRECTEUR_CMC: ['/cmc'],
+  DIRECTEUR_EFP: ['/efp'],
   CHEF_POLE: ['/dashboard', '/chef', '/salles', '/settings'],
   FORMATEUR: ['/dashboard', '/settings', '/formateur'],
+}
+
+const roleHomePath: Record<RoleKey, string> = {
+  DOSI: '/dashboard',
+  DIRECTEUR_CMC: '/cmc',
+  DIRECTEUR_EFP: '/efp',
+  CHEF_POLE: '/dashboard',
+  FORMATEUR: '/dashboard',
 }
 
 const isAllowedPath = (path: string, prefixes: string[]) => {
@@ -35,18 +43,18 @@ export default defineNuxtRouteMiddleware((to) => {
     return
   }
 
-  if (isLoginRoute) {
-    return navigateTo('/dashboard')
-  }
-
   const role = authStore.user?.role as RoleKey | undefined
   if (!role || !(role in roleRoutePrefixes)) {
     authStore.clearAuth()
     return navigateTo('/login')
   }
 
+  if (isLoginRoute) {
+    return navigateTo(roleHomePath[role])
+  }
+
   const allowedPrefixes = roleRoutePrefixes[role]
   if (!isAllowedPath(to.path, allowedPrefixes)) {
-    return navigateTo('/dashboard')
+    return navigateTo(roleHomePath[role])
   }
 })

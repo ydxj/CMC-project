@@ -165,7 +165,9 @@ import { useRouter } from 'vue-router'
 import { useApi } from '../../composables/useApi'
 import { useAuthStore } from '../../stores/auth'
 
-definePageMeta({ middleware: ['auth'] })
+definePageMeta({
+  middleware: ['auth'],
+})
 
 const router = useRouter()
 const api = useApi()
@@ -298,3 +300,4 @@ onMounted(() => {
   loadMe()
 })
 </script>
+
