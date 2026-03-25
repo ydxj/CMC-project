@@ -11,7 +11,24 @@ class EtablissementsController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Etablissement::with('directeur:id,nom,prenom,email,role,id_etablissement');
+        $query = Etablissement::query()
+            ->with('directeur:id,nom,prenom,email,role,id_etablissement')
+            ->leftJoin('ville as v', 'etablissements.city_id', '=', 'v.id')
+            ->leftJoin('region as r', 'v.region', '=', 'r.id')
+            ->select([
+                'etablissements.*',
+                'v.ville as city_name',
+                'v.region as region_id',
+                'r.region as region_name',
+            ])
+            ->orderByDesc('etablissements.id');
+
+        $page = $request->query('page');
+        $perPage = max(1, min((int) $request->query('per_page', 25), 100));
+
+        if ($page !== null) {
+            return response()->json($query->paginate($perPage));
+        }
 
         $limit = $request->query('limit');
         $offset = $request->query('offset');

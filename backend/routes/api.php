@@ -6,6 +6,7 @@ use App\Http\Controllers\EtablissementsController;
 use App\Http\Controllers\EmploiDuTempsController;
 use App\Http\Controllers\FiliersController;
 use App\Http\Controllers\GroupesController;
+use App\Http\Controllers\LocationsController;
 use App\Http\Controllers\ModuleFormateurController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PolesController;
@@ -28,6 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:DOSI')->group(function () {
         Route::resource('users', UsersController::class);
         Route::resource('etablissements', EtablissementsController::class);
+        Route::get('locations/regions', [LocationsController::class, 'regions']);
+        Route::get('locations/regions/{regionId}/cities', [LocationsController::class, 'citiesByRegion']);
     });
 
     Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
