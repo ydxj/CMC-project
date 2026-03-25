@@ -70,7 +70,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-type RoleKey = 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+type RoleKey = 'DOSI' | 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
 type IconName =
   | 'home'
   | 'users'
@@ -111,6 +111,19 @@ const emit = defineEmits<{ (e: 'navigate'): void }>()
 const route = useRoute()
 
 const menusByRole: Record<RoleKey, RoleMenu> = {
+  DOSI: {
+    dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
+    groups: [
+      {
+        label: 'Administration Systeme',
+        items: [
+          { label: 'Nouveaux etablissements', path: '/dosi/etablissements', icon: 'building' },
+          { label: 'Nouveaux directeurs', path: '/dosi/directeurs', icon: 'user-plus' },
+        ],
+      },
+    ],
+    settings: { label: 'Parametres', path: '/settings', icon: 'settings' },
+  },
   DIRECTEUR: {
     dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
     groups: [
@@ -248,12 +261,14 @@ const iconPaths: Record<IconName, string> = {
 }
 
 const roleKey = computed<RoleKey>(() => {
-  if (props.role === 'DIRECTEUR') return 'DIRECTEUR'
+  if (props.role === 'DOSI') return 'DOSI'
+  if (props.role === 'DIRECTEUR' || props.role === 'DIRECTEUR_CMC' || props.role === 'DIRECTEUR_EFP') return 'DIRECTEUR'
   if (props.role === 'CHEF_POLE') return 'CHEF_POLE'
   return 'FORMATEUR'
 })
 
 const roleLabel = computed(() => {
+  if (roleKey.value === 'DOSI') return 'DOSI'
   if (roleKey.value === 'DIRECTEUR') return 'Directeur'
   if (roleKey.value === 'CHEF_POLE') return 'Chef de pole'
   return 'Formateur'

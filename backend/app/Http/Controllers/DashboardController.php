@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Etablissement;
 use App\Models\Formateur;
 use App\Models\Groupe;
 use App\Models\Module;
@@ -25,7 +26,11 @@ class DashboardController extends Controller
 
         $role = $user->role;
 
-        if ($role === User::ROLE_DOSI || $role === User::ROLE_DIRECTEUR_CMC || $role === User::ROLE_DIRECTEUR_EFP) {
+        if ($role === User::ROLE_DOSI) {
+            return $this->getDosiStats();
+        }
+
+        if ($role === User::ROLE_DIRECTEUR_CMC || $role === User::ROLE_DIRECTEUR_EFP) {
             return $this->getDirecteurStats($user);
         }
 
@@ -41,6 +46,20 @@ class DashboardController extends Controller
             'success' => false,
             'message' => 'Unknown role',
         ], 400);
+    }
+
+    private function getDosiStats()
+    {
+        $etablissements = Etablissement::count();
+        $directeurs = User::whereIn('role', [User::ROLE_DIRECTEUR_CMC, User::ROLE_DIRECTEUR_EFP])->count();
+
+        return response()->json([
+            'success' => true,
+            'stats' => [
+                'etablissements' => $etablissements,
+                'directeurs' => $directeurs,
+            ],
+        ]);
     }
 
     private function getDirecteurStats(User $user)

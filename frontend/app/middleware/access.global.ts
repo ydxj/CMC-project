@@ -1,10 +1,12 @@
 import { defineNuxtRouteMiddleware, navigateTo } from 'nuxt/app'
 import { useAuthStore } from '../../stores/auth'
 
-type RoleKey = 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+type RoleKey = 'DOSI' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 
 const roleRoutePrefixes: Record<RoleKey, string[]> = {
-  DIRECTEUR: ['/dashboard', '/users', '/poles', '/salles', '/formateurs', '/filieres', '/emploi-du-temps', '/settings'],
+  DOSI: ['/dashboard', '/dosi', '/settings'],
+  DIRECTEUR_CMC: ['/dashboard', '/poles', '/salles', '/formateurs', '/filieres', '/emploi-du-temps', '/settings'],
+  DIRECTEUR_EFP: ['/dashboard', '/poles', '/salles', '/formateurs', '/filieres', '/emploi-du-temps', '/settings'],
   CHEF_POLE: ['/dashboard', '/chef', '/salles', '/settings'],
   FORMATEUR: ['/dashboard', '/settings', '/formateur'],
 }
