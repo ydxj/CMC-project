@@ -265,6 +265,8 @@ const isSidebarOpen = ref(false)
 const loadingStats = ref(true)
 
 const stats = reactive({
+  etablissements: '--' as string | number,
+  directeurs: '--' as string | number,
   poles: '--' as string | number,
   salles: '--' as string | number,
   formateurs: '--' as string | number,
@@ -281,6 +283,7 @@ const formateurOverview = reactive({
 
 const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
 const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
+const isDosi = computed(() => authStore.user?.role === 'DOSI')
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -289,7 +292,9 @@ const fullName = computed(() => {
 
 const roleLabel = computed(() => {
   const role = authStore.user?.role
-  if (role === 'DIRECTEUR') return 'Directeur Pedagogique'
+  if (role === 'DOSI') return 'DOSI'
+  if (role === 'DIRECTEUR' || role === 'DIRECTEUR_CMC') return 'Directeur CMC'
+  if (role === 'DIRECTEUR_EFP') return 'Directeur EFP'
   if (role === 'CHEF_POLE') return 'Chef de Pole'
   if (role === 'FORMATEUR') return 'Formateur'
   return role || 'Utilisateur'
@@ -331,6 +336,13 @@ const getUniqueCount = (items: Array<number | undefined | null>) => {
 }
 
 const statCards = computed(() => {
+  if (isDosi.value) {
+    return [
+      { key: 'etablissements', label: 'Etablissements', value: stats.etablissements, description: 'Nombre total d etablissements' },
+      { key: 'directeurs', label: 'Directeurs', value: stats.directeurs, description: 'Nombre total de directeurs' },
+    ]
+  }
+
   if (isFormateur.value) {
     return [
       { key: 'modules', label: 'Mes Modules', value: stats.modules, description: 'Modules assignes' },
@@ -366,6 +378,8 @@ const loadDashboardStats = async () => {
     const response = await api.get<any>('/dashboard/stats')
     const data = response.stats || response.data?.stats || response
 
+    stats.etablissements = data.etablissements ?? '--'
+    stats.directeurs = data.directeurs ?? '--'
     stats.poles = data.poles ?? '--'
     stats.salles = data.salles ?? '--'
     stats.formateurs = data.formateurs ?? '--'
