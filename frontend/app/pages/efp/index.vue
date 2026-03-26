@@ -288,6 +288,7 @@ const formateurOverview = reactive({
 const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
 const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
 const isDosi = computed(() => authStore.user?.role === 'DOSI')
+const isDirecteurEFP = computed(() => authStore.user?.role === 'DIRECTEUR_EFP')
 
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
@@ -361,6 +362,15 @@ const statCards = computed(() => {
       { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Pole(s) que vous gerez' },
       { key: 'salles', label: 'Salles / Ateliers', value: stats.salles, description: 'Available learning spaces' },
       { key: 'formateurs', label: 'Formateurs', value: stats.formateurs, description: 'Assigned teachers' },
+      { key: 'modules', label: 'Modules', value: stats.modules, description: 'Courses and units' },
+    ]
+  }
+
+  if (isDirecteurEFP.value) {
+    return [
+      { key: 'salles', label: 'Salles / Ateliers', value: stats.salles, description: 'Available learning spaces' },
+      { key: 'formateurs', label: 'Formateurs', value: stats.formateurs, description: 'Assigned teachers' },
+      { key: 'groupes', label: 'Groupes', value: stats.groupes, description: 'Student groups' },
       { key: 'modules', label: 'Modules', value: stats.modules, description: 'Courses and units' },
     ]
   }
