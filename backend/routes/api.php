@@ -28,6 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
         Route::get('users', [UsersController::class, 'index']);
         Route::post('users', [UsersController::class, 'store']);
+        Route::get('users/template', [UsersController::class, 'downloadTemplate']);
+        Route::post('users/import', [UsersController::class, 'importExcel']);
     });
 
     // Update/delete user accounts are reserved to DOSI and directors.
@@ -46,6 +48,17 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
+        Route::get('poles/template', [PolesController::class, 'downloadTemplate']);
+        Route::post('poles/import', [PolesController::class, 'importExcel']);
+        Route::get('salles/template', [SallesController::class, 'downloadTemplate']);
+        Route::post('salles/import', [SallesController::class, 'importExcel']);
+        Route::get('filiers/template', [FiliersController::class, 'downloadTemplate']);
+        Route::post('filiers/import', [FiliersController::class, 'importExcel']);
+        Route::get('groupes/template', [GroupesController::class, 'downloadTemplate']);
+        Route::post('groupes/import', [GroupesController::class, 'importExcel']);
+        Route::get('modules/template', [ModulesController::class, 'downloadTemplate']);
+        Route::post('modules/import', [ModulesController::class, 'importExcel']);
+
         Route::resource('poles', PolesController::class);
         Route::resource('salles', SallesController::class);
         Route::resource('filiers', FiliersController::class);

@@ -6,10 +6,21 @@ use App\Models\Module;
 use App\Models\Pole;
 use App\Models\Filiere;
 use App\Models\User;
+use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
 
 class ModulesController extends Controller
 {
+    public function downloadTemplate(ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->downloadTemplate('modules');
+    }
+
+    public function importExcel(Request $request, ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->import($request, 'modules');
+    }
+
     private function getChefPoleIds($user)
     {
         if (!$user || $user->role !== User::ROLE_CHEF_POLE) {

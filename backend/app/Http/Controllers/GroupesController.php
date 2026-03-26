@@ -6,10 +6,21 @@ use App\Models\Groupe;
 use App\Models\Pole;
 use App\Models\Filiere;
 use App\Models\User;
+use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
 
 class GroupesController extends Controller
 {
+    public function downloadTemplate(ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->downloadTemplate('groupes');
+    }
+
+    public function importExcel(Request $request, ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->import($request, 'groupes');
+    }
+
     private function getChefPoleIds($user)
     {
         if (!$user || $user->role !== User::ROLE_CHEF_POLE) {

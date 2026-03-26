@@ -5,12 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Formateur;
 use App\Models\Pole;
 use App\Models\User;
+use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UsersController extends Controller
 {
+    public function downloadTemplate(ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->downloadTemplate('users');
+    }
+
+    public function importExcel(Request $request, ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->import($request, 'users');
+    }
+
     public function index(Request $request)
     {
         $actor = $request->user();

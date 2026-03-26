@@ -65,17 +65,19 @@
             </svg>
           </div>
 
-          <!-- Add Pole Button -->
-          <button
-            type="button"
-            @click="openCreateModal"
-            class="inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 transition-colors"
-          >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Ajouter pôle
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              @click="openCreateModal"
+              class="inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 transition-colors"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter pôle
+            </button>
+            <BulkExcelPanel entity="poles" @imported="loadPoles" />
+          </div>
         </div>
 
         <!-- Loading State -->
@@ -483,6 +485,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
+import BulkExcelPanel from '../../../components/BulkExcelPanel.vue'
 
 definePageMeta({
   middleware: ['auth'],

@@ -5,10 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Salle;
 use App\Models\Pole;
 use App\Models\User;
+use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
 
 class SallesController extends Controller
 {
+    public function downloadTemplate(ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->downloadTemplate('salles');
+    }
+
+    public function importExcel(Request $request, ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->import($request, 'salles');
+    }
+
     private function getChefPoleIds($user)
     {
         if (!$user || $user->role !== User::ROLE_CHEF_POLE) {

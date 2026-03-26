@@ -74,6 +74,7 @@
             >
               Affecter formateur
             </button>
+            <BulkExcelPanel entity="users" @imported="loadFormateurs" />
           </div>
         </div>
 
@@ -419,6 +420,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
+import BulkExcelPanel from '../../../components/BulkExcelPanel.vue'
 
 definePageMeta({
   middleware: ['auth']
