@@ -5,8 +5,10 @@ interface User {
   id: number
   nom: string
   prenom: string
-  email: string
+  email?: string
   role: string
+  id_etablissement?: number | null
+  type_etablissement?: 'CMC' | 'EFP' | string | null
 }
 
 interface AuthState {

@@ -2,11 +2,11 @@
   <aside class="h-full border-r border-slate-200 bg-white text-slate-800">
     <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-4">
       <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-200">
-        <img src="/logo.png" alt="CMC logo" class="h-6 w-6 object-contain" />
+        <img src="/logo.png" :alt="`Logo ${sidebarBrandAcronym}`" class="h-6 w-6 object-contain" />
       </div>
       <div>
-        <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">CMC</p>
-        <p class="text-sm font-semibold text-slate-900">Schedule Manager</p>
+        <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">{{ sidebarBrandAcronym }}</p>
+        <p class="text-sm font-semibold text-slate-900">Gestionnaire d'emploi du temps</p>
       </div>
     </div>
 
@@ -69,6 +69,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
 
 type RoleKey = 'DOSI' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 type IconName =
@@ -109,6 +110,7 @@ interface RoleMenu {
 const props = defineProps<{ role?: string }>()
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const menusByRole: Record<RoleKey, RoleMenu> = {
   DOSI: {
@@ -325,6 +327,14 @@ const roleLabel = computed(() => {
   if (roleKey.value === 'DIRECTEUR_EFP') return 'Directeur EFP'
   if (roleKey.value === 'CHEF_POLE') return 'Chef de pole'
   return 'Formateur'
+})
+
+const sidebarBrandAcronym = computed(() => {
+  const typeEtablissement = String(authStore.user?.type_etablissement || '').toUpperCase()
+
+  if (roleKey.value === 'DIRECTEUR_EFP') return 'EFP'
+  if (roleKey.value === 'FORMATEUR' && (typeEtablissement === 'EFP' || typeEtablissement === 'EFM')) return 'EFP'
+  return 'CMC'
 })
 
 const menu = computed<RoleMenu>(() => menusByRole[roleKey.value])

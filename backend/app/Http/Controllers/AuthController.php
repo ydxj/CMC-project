@@ -36,6 +36,7 @@ class AuthController extends Controller
                 'prenom' => $user->prenom,
                 'role' => $user->role,
                 'id_etablissement' => $user->id_etablissement,
+                'type_etablissement' => $user->etablissement?->type_etablissement,
             ],
         ]);
     }
@@ -64,6 +65,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'id_etablissement' => $user->id_etablissement,
+                'type_etablissement' => $user->etablissement?->type_etablissement,
             ],
         ]);
     }
