@@ -2,7 +2,7 @@
   <aside class="h-full border-r border-slate-200 bg-white text-slate-800">
     <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-4">
       <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-200">
-        <img src="/logo.png" :alt="`Logo ${sidebarBrandAcronym}`" class="h-6 w-6 object-contain" />
+        <img :src="sidebarLogoSrc" :alt="`Logo ${sidebarBrandAcronym}`" class="h-6 w-6 object-contain" />
       </div>
       <div>
         <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">{{ sidebarBrandAcronym }}</p>
@@ -335,6 +335,10 @@ const sidebarBrandAcronym = computed(() => {
   if (roleKey.value === 'DIRECTEUR_EFP') return 'EFP'
   if (roleKey.value === 'FORMATEUR' && (typeEtablissement === 'EFP' || typeEtablissement === 'EFM')) return 'EFP'
   return 'CMC'
+})
+
+const sidebarLogoSrc = computed(() => {
+  return sidebarBrandAcronym.value === 'EFP' ? '/logo.png' : '/cmc.png'
 })
 
 const menu = computed<RoleMenu>(() => menusByRole[roleKey.value])
