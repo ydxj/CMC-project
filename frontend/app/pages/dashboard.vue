@@ -80,10 +80,10 @@
         >
           <h3 class="text-base font-semibold text-slate-900">Mon Apercu</h3>
           <p class="mt-1 text-sm text-slate-600">
-            Vos modules, groupes et poles assignes a partir des donnees API.
+            Vos modules, groupes et informations d appartenance.
           </p>
 
-          <div class="mt-4 grid gap-4 sm:grid-cols-3">
+          <div class="mt-4 grid gap-4" :class="isEfpFormateur ? 'sm:grid-cols-2' : 'sm:grid-cols-3'">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mes Modules</p>
               <ul class="mt-2 space-y-1 text-sm text-slate-700">
@@ -100,11 +100,18 @@
               </ul>
             </div>
 
-            <div>
+            <div v-if="!isEfpFormateur">
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mon Pole</p>
               <ul class="mt-2 space-y-1 text-sm text-slate-700">
                 <li v-for="name in formateurOverview.poles" :key="`p-${name}`">{{ name }}</li>
                 <li v-if="formateurOverview.poles.length === 0" class="text-slate-400">Aucun pole assigne</li>
+              </ul>
+            </div>
+
+            <div v-else>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mon Etablissement</p>
+              <ul class="mt-2 space-y-1 text-sm text-slate-700">
+                <li>{{ formateurEtablissementNom }}</li>
               </ul>
             </div>
           </div>
@@ -289,6 +296,21 @@ const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
 const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
 const isDosi = computed(() => authStore.user?.role === 'DOSI')
 
+const formateurEtablissementType = computed(() => {
+  const raw = String(authStore.user?.type_etablissement || '').toUpperCase()
+  if (raw === 'EFM') return 'EFP'
+  return raw || '--'
+})
+
+const formateurEtablissementNom = computed(() => {
+  const name = String(authStore.user?.nom_etablissement || '').trim()
+  return name || '--'
+})
+
+const isEfpFormateur = computed(() => {
+  return isFormateur.value && formateurEtablissementType.value === 'EFP'
+})
+
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
   return `${authStore.user.nom} ${authStore.user.prenom}`.trim()
@@ -348,10 +370,14 @@ const statCards = computed(() => {
   }
 
   if (isFormateur.value) {
+    const thirdCard = isEfpFormateur.value
+      ? { key: 'etablissement', label: 'Mon Etablissement', value: formateurEtablissementNom.value, description: 'Nom de l etablissement' }
+      : { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Nom du pole d appartenance' }
+
     return [
       { key: 'modules', label: 'Mes Modules', value: stats.modules, description: 'Modules assignes' },
       { key: 'groupes', label: 'Mes Groupes', value: stats.groupes, description: 'Groupes enseignes' },
-      { key: 'poles', label: 'Mon Pole', value: stats.poles, description: 'Nom du pole d appartenance' },
+      thirdCard,
       { key: 'assignments', label: 'Seances', value: stats.assignments, description: 'Affectations actives' },
     ]
   }
