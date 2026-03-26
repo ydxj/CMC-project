@@ -81,7 +81,7 @@
         <!-- Filter by Role -->
         <div class="mb-6 flex flex-wrap gap-2">
           <button
-            v-for="role in ['Tous', 'DIRECTEUR', 'CHEF_POLE', 'FORMATEUR']"
+            v-for="role in ['Tous', 'DIRECTEUR_EFP', 'CHEF_POLE', 'FORMATEUR']"
             :key="role"
             @click="selectedRole = role"
             :class="[
@@ -320,7 +320,7 @@
                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
                 >
                   <option value="">Sélectionner un rôle</option>
-                  <option value="DIRECTEUR">Directeur</option>
+                  <option value="DIRECTEUR_EFP">Directeur</option>
                   <option value="CHEF_POLE">Chef de Pôle</option>
                   <option value="FORMATEUR">Formateur</option>
                 </select>
@@ -377,21 +377,6 @@
                     />
                   </div>
 
-                  <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
-                      Pole <span class="text-red-500">*</span>
-                    </label>
-                    <select
-                      v-model.number="createForm.id_pole"
-                      :required="isCreateFormateurSelected"
-                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
-                    >
-                      <option :value="null">Sélectionner un pôle</option>
-                      <option v-for="pole in poles" :key="pole.id" :value="pole.id">
-                        {{ pole.nom_pole }}
-                      </option>
-                    </select>
-                  </div>
                 </div>
               </section>
 
@@ -526,7 +511,7 @@
                   required
                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
                 >
-                  <option value="DIRECTEUR">Directeur</option>
+                  <option value="DIRECTEUR_EFP">Directeur</option>
                   <option value="CHEF_POLE">Chef de Pôle</option>
                   <option value="FORMATEUR">Formateur</option>
                 </select>
@@ -692,12 +677,7 @@ interface User {
   prenom: string
   email: string
   matricule: string
-  role: 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
-}
-
-interface PoleItem {
-  id: number
-  nom_pole: string
+  role: 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 }
 
 const router = useRouter()
@@ -706,7 +686,6 @@ const authStore = useAuthStore()
 
 const isSidebarOpen = ref(false)
 const users = ref<User[]>([])
-const poles = ref<PoleItem[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
@@ -739,7 +718,7 @@ const editForm = ref({
   nom: '',
   prenom: '',
   email: '',
-  role: 'DIRECTEUR' as 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+  role: 'DIRECTEUR_EFP' as 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 })
 const editError = ref<string | null>(null)
 const editSubmitting = ref(false)
@@ -756,7 +735,7 @@ const fullName = computed(() => {
 
 const roleLabel = computed(() => {
   const role = authStore.user?.role
-  if (role === 'DIRECTEUR') return 'Directeur Pedagogique'
+  if (role === 'DIRECTEUR_EFP' || role === 'DIRECTEUR') return 'Directeur Pedagogique'
   if (role === 'CHEF_POLE') return 'Chef de Pole'
   if (role === 'FORMATEUR') return 'Formateur'
   return role || 'Utilisateur'
@@ -800,6 +779,7 @@ const createPasswordMismatch = computed(() => {
 
 const getRoleLabel = (role: string): string => {
   const labels: Record<string, string> = {
+    'DIRECTEUR_EFP': 'Directeur',
     'DIRECTEUR': 'Directeur',
     'CHEF_POLE': 'Chef de Pôle',
     'FORMATEUR': 'Formateur'
@@ -809,6 +789,7 @@ const getRoleLabel = (role: string): string => {
 
 const getRoleBadgeClass = (role: string): string => {
   const classes: Record<string, string> = {
+    'DIRECTEUR_EFP': 'bg-purple-100 text-purple-800',
     'DIRECTEUR': 'bg-purple-100 text-purple-800',
     'CHEF_POLE': 'bg-blue-100 text-blue-800',
     'FORMATEUR': 'bg-green-100 text-green-800'
@@ -829,15 +810,6 @@ const loadUsers = async () => {
     console.error('Error loading users:', err)
   } finally {
     loading.value = false
-  }
-}
-
-const loadPoles = async () => {
-  try {
-    const response = await api.get<PoleItem[] | { data: PoleItem[] }>('/poles')
-    poles.value = Array.isArray(response) ? response : ((response as any).data || [])
-  } catch (err) {
-    console.error('Error loading poles:', err)
   }
 }
 
@@ -884,11 +856,10 @@ const createUser = async () => {
     (
       !createForm.value.type_formateur ||
       createForm.value.MHS === null ||
-      createForm.value.NBR_semaine === null ||
-      createForm.value.id_pole === null
+      createForm.value.NBR_semaine === null
     )
   ) {
-    createError.value = 'Pour un formateur, veuillez renseigner type formateur, MHS, NBR semaine et pôle.'
+    createError.value = 'Pour un formateur, veuillez renseigner type formateur, MHS et NBR semaine.'
     return
   }
 
@@ -1031,7 +1002,6 @@ const handleLogout = async () => {
 
 onMounted(() => {
   loadUsers()
-  loadPoles()
 })
 </script>
 

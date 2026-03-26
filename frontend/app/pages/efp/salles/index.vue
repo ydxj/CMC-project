@@ -221,22 +221,6 @@
 
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">
-                  Pole <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model.number="createForm.id_pole"
-                  required
-                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
-                >
-                  <option :value="null">Selectionner un pole</option>
-                  <option v-for="pole in poles" :key="pole.id" :value="pole.id">
-                    {{ pole.nom_pole }}
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
                   Nom de la salle <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -348,7 +332,7 @@ interface Salle {
   id: number
   nom_salle: string
   type_salle: 'SALLE' | 'ATELIER'
-  id_pole: number
+  id_pole: number | null
   pole?: Pole
 }
 
@@ -357,7 +341,6 @@ const api = useApi()
 const authStore = useAuthStore()
 
 const isSidebarOpen = ref(false)
-const poles = ref<Pole[]>([])
 const salles = ref<Salle[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -372,7 +355,6 @@ const createSuccess = ref<string | null>(null)
 const createForm = ref({
   nom_salle: '',
   type_salle: '',
-  id_pole: null as number | null,
 })
 const hasCustomName = ref(false)
 
@@ -423,20 +405,10 @@ const groupedSalles = computed(() => {
 })
 
 const generatedSalleName = computed(() => {
-  if (!createForm.value.type_salle || createForm.value.id_pole === null) return ''
-
-  const selectedPole = poles.value.find((pole) => pole.id === createForm.value.id_pole)
-  if (!selectedPole) return ''
+  if (!createForm.value.type_salle) return ''
 
   const typeInitial = createForm.value.type_salle === 'ATELIER' ? 'A' : 'S'
-  const cleanedPoleName = selectedPole.nom_pole
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-
-  const poleInitialMatch = cleanedPoleName.match(/[A-Za-z0-9]/)
-  const poleInitial = (poleInitialMatch ? poleInitialMatch[0] : 'X').toUpperCase()
-  const prefix = `${typeInitial}${poleInitial}`
+  const prefix = typeInitial
 
   const regex = new RegExp(`^${prefix}(\\d+)$`, 'i')
   const maxSequence = salles.value.reduce((max, salle) => {
@@ -485,15 +457,6 @@ const handleNameInput = () => {
   hasCustomName.value = currentName.length > 0 && currentName !== suggestedName
 }
 
-const loadPoles = async () => {
-  try {
-    const response = await api.get<Pole[] | { data: Pole[] }>('/poles')
-    poles.value = Array.isArray(response) ? response : ((response as any).data || [])
-  } catch (err: any) {
-    console.error('Error loading poles:', err)
-  }
-}
-
 const loadSalles = async () => {
   loading.value = true
   error.value = null
@@ -513,7 +476,6 @@ const openCreateModal = () => {
   createForm.value = {
     nom_salle: '',
     type_salle: '',
-    id_pole: null,
   }
   hasCustomName.value = false
   createError.value = null
@@ -531,7 +493,7 @@ const createSalle = async () => {
   createError.value = null
   createSuccess.value = null
 
-  if (!createForm.value.nom_salle.trim() || !createForm.value.type_salle || createForm.value.id_pole === null) {
+  if (!createForm.value.nom_salle.trim() || !createForm.value.type_salle) {
     createError.value = 'Veuillez remplir tous les champs obligatoires.'
     return
   }
@@ -542,7 +504,7 @@ const createSalle = async () => {
     const payload = {
       nom_salle: createForm.value.nom_salle.trim(),
       type_salle: createForm.value.type_salle,
-      id_pole: createForm.value.id_pole,
+      id_pole: null,
     }
 
     await api.post('/salles', payload)
@@ -583,7 +545,6 @@ const handleLogout = async () => {
 }
 
 onMounted(() => {
-  loadPoles()
   loadSalles()
 })
 </script>

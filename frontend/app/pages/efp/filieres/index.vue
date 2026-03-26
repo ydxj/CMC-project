@@ -195,22 +195,6 @@
 
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">
-                  Pole <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model.number="createForm.id_pole"
-                  required
-                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
-                >
-                  <option :value="null">Selectionner un pole</option>
-                  <option v-for="pole in poles" :key="pole.id" :value="pole.id">
-                    {{ pole.nom_pole }}
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
                   Nom filiere <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -320,7 +304,7 @@ interface Pole {
 interface Filiere {
   id: number
   nom_filiere: string
-  id_pole: number
+  id_pole: number | null
   pole?: Pole
 }
 
@@ -329,7 +313,6 @@ const api = useApi()
 const authStore = useAuthStore()
 
 const isSidebarOpen = ref(false)
-const poles = ref<Pole[]>([])
 const filieres = ref<Filiere[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -343,7 +326,6 @@ const createError = ref<string | null>(null)
 const createSuccess = ref<string | null>(null)
 const createForm = ref({
   nom_filiere: '',
-  id_pole: null as number | null,
 })
 
 const fullName = computed(() => {
@@ -372,7 +354,7 @@ const groupedFilieres = computed(() => {
     ? filieres.value
     : filieres.value.filter((filiere) =>
         filiere.nom_filiere.toLowerCase().includes(query) ||
-        filiere.pole?.nom_pole?.toLowerCase().includes(query)
+        (filiere.pole?.nom_pole || 'Sans pole').toLowerCase().includes(query)
       )
 
   const groupedMap = new Map<string, { key: string; poleName: string; filieres: Filiere[] }>()
@@ -418,19 +400,9 @@ const loadFilieres = async () => {
   }
 }
 
-const loadPoles = async () => {
-  try {
-    const response = await api.get<Pole[] | { data: Pole[] }>('/poles')
-    poles.value = Array.isArray(response) ? response : ((response as any).data || [])
-  } catch (err: any) {
-    console.error('Error loading poles:', err)
-  }
-}
-
 const openCreateModal = () => {
   createForm.value = {
     nom_filiere: '',
-    id_pole: null,
   }
   createError.value = null
   createSuccess.value = null
@@ -447,7 +419,7 @@ const createFiliere = async () => {
   createError.value = null
   createSuccess.value = null
 
-  if (!createForm.value.nom_filiere.trim() || createForm.value.id_pole === null) {
+  if (!createForm.value.nom_filiere.trim()) {
     createError.value = 'Veuillez remplir tous les champs obligatoires.'
     return
   }
@@ -457,7 +429,7 @@ const createFiliere = async () => {
   try {
     await api.post('/filiers', {
       nom_filiere: createForm.value.nom_filiere.trim(),
-      id_pole: createForm.value.id_pole,
+      id_pole: null,
     })
 
     createSuccess.value = 'Filiere creee avec succes !'
@@ -497,7 +469,6 @@ const handleLogout = async () => {
 }
 
 onMounted(() => {
-  loadPoles()
   loadFilieres()
 })
 </script>

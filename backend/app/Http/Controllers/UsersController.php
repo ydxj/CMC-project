@@ -129,7 +129,7 @@ class UsersController extends Controller
             'type_formateur' => 'nullable|required_if:role,FORMATEUR|in:FP,FV',
             'MHS' => 'nullable|required_if:role,FORMATEUR|integer|min:0',
             'NBR_semaine' => 'nullable|required_if:role,FORMATEUR|integer|min:0',
-            'id_pole' => 'nullable|required_if:role,FORMATEUR|integer|exists:poles,id',
+            'id_pole' => 'nullable|integer|exists:poles,id',
         ]);
 
         if ($actor && $actor->role !== User::ROLE_DOSI) {
@@ -141,6 +141,19 @@ class UsersController extends Controller
             }
 
             $data['id_etablissement'] = (int) $actor->id_etablissement;
+        }
+
+        if (($data['role'] ?? null) === User::ROLE_FORMATEUR) {
+            if ($actor && $actor->role === User::ROLE_DIRECTEUR_EFP) {
+                $data['id_pole'] = null;
+            }
+
+            if ($actor && $actor->role === User::ROLE_DIRECTEUR_CMC && empty($data['id_pole'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'id_pole is required when creating a formateur for CMC',
+                ], 422);
+            }
         }
 
         if (($data['role'] ?? null) === User::ROLE_FORMATEUR && !empty($data['id_pole']) && !empty($data['id_etablissement'])) {

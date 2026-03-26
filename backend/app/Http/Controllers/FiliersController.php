@@ -95,6 +95,11 @@ class FiliersController extends Controller
             ], 422);
         }
 
+        // EFP filieres are establishment-scoped (single-pole model), so they must not be tied to a pole.
+        if ($user && $user->role === User::ROLE_DIRECTEUR_EFP) {
+            $data['id_pole'] = null;
+        }
+
         if (!empty($data['id_pole'])) {
             $poleExists = Pole::where('id', $data['id_pole'])
                 ->where('id_etablissement', $data['id_etablissement'])
@@ -165,6 +170,11 @@ class FiliersController extends Controller
 
         if ($actor && $actor->role !== User::ROLE_DOSI) {
             unset($data['id_etablissement']);
+        }
+
+        // Keep EFP filieres at establishment level even during updates.
+        if ($actor && $actor->role === User::ROLE_DIRECTEUR_EFP) {
+            $data['id_pole'] = null;
         }
 
         $targetPoleId = array_key_exists('id_pole', $data) ? (int) $data['id_pole'] : (int) $filiere->id_pole;
