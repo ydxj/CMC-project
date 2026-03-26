@@ -24,10 +24,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
 
+    // User listing/creation is needed for DOSI, directors and chef de pole flows.
+    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
+        Route::get('users', [UsersController::class, 'index']);
+        Route::post('users', [UsersController::class, 'store']);
+    });
+
+    // Update/delete user accounts are reserved to DOSI and directors.
+    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP')->group(function () {
+        Route::put('users/{id}', [UsersController::class, 'update']);
+        Route::patch('users/{id}', [UsersController::class, 'update']);
+        Route::delete('users/{id}', [UsersController::class, 'destroy']);
+    });
+
     Route::get('/dashboard/stats', [DashboardController::class, 'getStats']);
 
     Route::middleware('role:DOSI')->group(function () {
-        Route::resource('users', UsersController::class);
         Route::resource('etablissements', EtablissementsController::class);
         Route::get('locations/regions', [LocationsController::class, 'regions']);
         Route::get('locations/regions/{regionId}/cities', [LocationsController::class, 'citiesByRegion']);
