@@ -49,11 +49,11 @@
               <div class="inline-flex rounded-lg border border-slate-300 bg-slate-50 p-1">
                 <button
                   type="button"
-                  @click="setViewMode('pole')"
+                  @click="setViewMode('general')"
                   class="rounded-md px-3 py-1.5 text-xs font-semibold transition"
-                  :class="viewMode === 'pole' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                  :class="viewMode === 'general' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
                 >
-                  Pole
+                  Planning general
                 </button>
                 <button
                   type="button"
@@ -74,36 +74,8 @@
               </div>
             </div>
 
-            <!-- Pole picker -->
-            <div v-if="viewMode === 'pole'">
-              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Pole</span>
-              <div class="relative">
-                <input
-                  v-model="poleSearch"
-                  type="text"
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="Rechercher un pole..."
-                  @focus="showPolePicker = true"
-                  @input="showPolePicker = true"
-                  @blur="hidePolePicker"
-                />
-                <div
-                  v-if="showPolePicker"
-                  class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
-                >
-                  <button
-                    v-for="p in filteredPoleOptions"
-                    :key="p.id"
-                    type="button"
-                    class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                    :class="selectedPoleId === p.id ? 'bg-slate-100 font-semibold text-slate-900' : ''"
-                    @mousedown.prevent="selectPoleOption(p.id, p.label)"
-                  >
-                    {{ p.label }}
-                  </button>
-                  <p v-if="!filteredPoleOptions.length" class="px-2 py-2 text-xs text-slate-500">Aucun pole trouve.</p>
-                </div>
-              </div>
+            <div v-if="viewMode === 'general'" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
+              Le planning general affiche toutes les seances de votre etablissement EFP.
             </div>
 
             <!-- Multi-select formateurs -->
@@ -254,7 +226,7 @@
 
             <!-- Hint -->
             <div v-else class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600 sm:col-span-1 lg:col-span-1">
-              Utilisez les filtres pour voir le planning par pole, par formateur, ou comparer deux formateurs.
+              Utilisez les filtres pour voir le planning general, par formateur, ou comparer deux formateurs.
             </div>
 
             <!-- Drag hint for filtered modes -->
@@ -302,8 +274,8 @@
           <p class="mt-2 text-slate-600">Chargement...</p>
         </div>
 
-        <!-- Global planner layout for pole/duo views -->
-        <template v-else-if="viewMode === 'pole' || viewMode === 'duo'">
+        <!-- Global planner layout for general/duo views -->
+        <template v-else-if="viewMode === 'general' || viewMode === 'duo'">
 
           <!-- Color legend for multi-formateur view -->
           <div v-if="viewMode === 'duo' && selectedCompareFormateurIds.length > 0" class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
@@ -670,7 +642,7 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-type ViewMode = 'pole' | 'duo' | 'formateur'
+type ViewMode = 'general' | 'duo' | 'formateur'
 
 interface UserItem {
   id: number
@@ -694,17 +666,6 @@ interface ModuleItem {
   id: number
   nom_module: string
   id_filiere?: number | null
-}
-
-interface PoleItem {
-  id: number
-  nom_pole: string
-}
-
-interface FiliereItem {
-  id: number
-  id_pole: number
-  pole?: PoleItem | null
 }
 
 interface SalleItem {
@@ -773,15 +734,12 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 
 const rawView = route.query.view as string | undefined
-const initialView: ViewMode = rawView === 'formateur' ? 'formateur' : rawView === 'duo' ? 'duo' : 'pole'
+const initialView: ViewMode = rawView === 'formateur' ? 'formateur' : rawView === 'duo' ? 'duo' : 'general'
 const viewMode = ref<ViewMode>(initialView)
 
 const selectedFormateurId = ref<number | null>(null)
-const selectedPoleId = ref<number | null>(null)
 const formateurSearch = ref('')
-const poleSearch = ref('')
 const showFormateurPicker = ref(false)
-const showPolePicker = ref(false)
 
 const selectedCompareFormateurIds = ref<number[]>([])
 const multiFormateurSearch = ref('')
@@ -791,7 +749,6 @@ const multiFormateurPickerRef = ref<HTMLElement | null>(null)
 const allAssignments = ref<Assignment[]>([])
 const allSchedule = ref<Session[]>([])
 const salles = ref<SalleItem[]>([])
-const filieres = ref<FiliereItem[]>([])
 
 const currentWeekStart = ref<Date>(getMonday(new Date()))
 
@@ -884,11 +841,6 @@ const weekLabel = computed(() => {
   return `Semaine du ${start.toLocaleDateString('fr-FR', opts)} au ${end.toLocaleDateString('fr-FR', opts)}`
 })
 
-const activePoleLabel = computed(() => {
-  const selected = poleOptions.value.find((p) => p.id === selectedPoleId.value)
-  return selected?.label || 'Tous les poles'
-})
-
 const activeCompareLabel = computed(() => {
   if (viewMode.value !== 'duo' || selectedCompareFormateurIds.value.length === 0) return 'Tous les formateurs'
   return selectedCompareFormateurIds.value
@@ -907,28 +859,10 @@ const formateurOptions = computed(() => {
   return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
 })
 
-const poleOptions = computed(() => {
-  const map = new Map<number, { id: number; label: string }>()
-  for (const filiere of filieres.value) {
-    if (!filiere.id_pole) continue
-    map.set(filiere.id_pole, {
-      id: filiere.id_pole,
-      label: filiere.pole?.nom_pole || `Pole #${filiere.id_pole}`,
-    })
-  }
-  return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
-})
-
 const filteredFormateurOptions = computed(() => {
   const query = formateurSearch.value.trim().toLowerCase()
   if (!query) return formateurOptions.value
   return formateurOptions.value.filter((f) => f.label.toLowerCase().includes(query))
-})
-
-const filteredPoleOptions = computed(() => {
-  const query = poleSearch.value.trim().toLowerCase()
-  if (!query) return poleOptions.value
-  return poleOptions.value.filter((p) => p.label.toLowerCase().includes(query))
 })
 
 const filteredMultiFormateurOptions = computed(() => {
@@ -955,28 +889,9 @@ const formateurColorMap = computed(() => {
   return map
 })
 
-const poleFiliereIds = computed(() => {
-  const ids = new Set<number>()
-  if (!selectedPoleId.value) return ids
-  for (const filiere of filieres.value) {
-    if (filiere.id_pole === selectedPoleId.value) {
-      ids.add(filiere.id)
-    }
-  }
-  return ids
-})
-
 const filteredSchedule = computed(() => {
   if (viewMode.value === 'formateur' && selectedFormateurId.value) {
     return allSchedule.value.filter((s) => s.module_groupe_formateur.id_formateur === selectedFormateurId.value)
-  }
-
-  if (viewMode.value === 'pole' && selectedPoleId.value) {
-    return allSchedule.value.filter((s) => {
-      const moduleFiliereId = s.module_groupe_formateur.module?.id_filiere
-      const groupeFiliereId = s.module_groupe_formateur.groupe?.id_filiere
-      return (moduleFiliereId && poleFiliereIds.value.has(moduleFiliereId)) || (groupeFiliereId && poleFiliereIds.value.has(groupeFiliereId))
-    })
   }
 
   if (viewMode.value === 'duo' && compareFormateurIds.value.size > 0) {
@@ -992,14 +907,6 @@ const filteredSchedule = computed(() => {
 const modalAssignments = computed(() => {
   if (viewMode.value === 'formateur' && selectedFormateurId.value) {
     return allAssignments.value.filter((a) => a.id_formateur === selectedFormateurId.value)
-  }
-
-  if (viewMode.value === 'pole' && selectedPoleId.value) {
-    return allAssignments.value.filter((a) => {
-      const moduleFiliereId = a.module?.id_filiere
-      const groupeFiliereId = a.groupe?.id_filiere
-      return (moduleFiliereId && poleFiliereIds.value.has(moduleFiliereId)) || (groupeFiliereId && poleFiliereIds.value.has(groupeFiliereId))
-    })
   }
 
   if (viewMode.value === 'duo' && compareFormateurIds.value.size > 0) {
@@ -1348,18 +1255,8 @@ function selectFormateurOption(id: number, label: string) {
   showFormateurPicker.value = false
 }
 
-function selectPoleOption(id: number, label: string) {
-  selectedPoleId.value = id
-  poleSearch.value = label
-  showPolePicker.value = false
-}
-
 function hideFormateurPicker() {
   setTimeout(() => { showFormateurPicker.value = false }, 120)
-}
-
-function hidePolePicker() {
-  setTimeout(() => { showPolePicker.value = false }, 120)
 }
 
 function toggleFormateurSelection(id: number) {
@@ -1423,7 +1320,7 @@ function hideModalSallePicker() {
 
 function setViewMode(mode: ViewMode) {
   viewMode.value = mode
-  router.replace({ query: { ...route.query, view: mode === 'pole' ? undefined : mode } })
+  router.replace({ query: { ...route.query, view: mode === 'general' ? undefined : mode } })
 }
 
 // ─── Drag-to-create (filtered modes only) ────────────────────────────────────
@@ -1825,18 +1722,12 @@ async function deleteSession(session: Session) {
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
 async function loadBaseData() {
-  const [assignmentsRes, sallesRes, filieresRes] = await Promise.all([
+  const [assignmentsRes, sallesRes] = await Promise.all([
     api.get<Assignment[]>('/module-formateur'),
     api.get<SalleItem[]>('/salles'),
-    api.get<FiliereItem[] | { data: FiliereItem[] }>('/filiers'),
   ])
   allAssignments.value = Array.isArray(assignmentsRes) ? assignmentsRes : ((assignmentsRes as any)?.data || [])
   salles.value = Array.isArray(sallesRes) ? sallesRes : ((sallesRes as any)?.data || [])
-  filieres.value = Array.isArray(filieresRes) ? filieresRes : ((filieresRes as any)?.data || [])
-
-  if (!selectedPoleId.value && poleOptions.value[0]) {
-    selectedPoleId.value = poleOptions.value[0].id
-  }
 
   if (!selectedFormateurId.value && formateurOptions.value[0]) {
     selectedFormateurId.value = formateurOptions.value[0].id
@@ -1856,10 +1747,6 @@ async function loadSchedule() {
   try {
     const params: Record<string, string | number> = {
       start_date: formatDateISO(currentWeekStart.value),
-    }
-
-    if (viewMode.value === 'pole' && selectedPoleId.value) {
-      params.id_pole = selectedPoleId.value
     }
     if (viewMode.value === 'formateur' && selectedFormateurId.value) {
       params.id_formateur = selectedFormateurId.value
@@ -1904,9 +1791,6 @@ const handleLogout = async () => {
 
 watch(viewMode, () => {
   clearActiveGlobalSlot()
-  if (viewMode.value === 'pole' && !selectedPoleId.value && poleOptions.value[0]) {
-    selectedPoleId.value = poleOptions.value[0].id
-  }
   if (viewMode.value === 'formateur' && !selectedFormateurId.value && formateurOptions.value[0]) {
     selectedFormateurId.value = formateurOptions.value[0].id
   }
@@ -1918,12 +1802,6 @@ watch(viewMode, () => {
   }
 
   loadSchedule()
-})
-
-watch(selectedPoleId, (id) => {
-  if (!id) return
-  const selected = poleOptions.value.find((p) => p.id === id)
-  if (selected) poleSearch.value = selected.label
 })
 
 watch(selectedFormateurId, (id) => {
@@ -1950,7 +1828,7 @@ watch(modalSalleId, (id) => {
   if (selected) modalSalleSearch.value = selected.nom_salle
 })
 
-watch([selectedPoleId, selectedFormateurId, selectedCompareFormateurIds, currentWeekStart], () => {
+watch([selectedFormateurId, selectedCompareFormateurIds, currentWeekStart], () => {
   loadSchedule()
 })
 
