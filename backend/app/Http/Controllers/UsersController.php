@@ -29,7 +29,7 @@ class UsersController extends Controller
             $query = User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule', 'id_etablissement');
 
             if ($actor && $actor->role !== User::ROLE_DOSI && $actor->id_etablissement) {
-                $query->where('id_etablissement', $actor->id_etablissement);
+                $query->where('users.id_etablissement', $actor->id_etablissement);
             }
 
             return response()->json(
@@ -40,19 +40,19 @@ class UsersController extends Controller
         $baseQuery = User::query();
 
         if ($actor && $actor->role !== User::ROLE_DOSI && $actor->id_etablissement) {
-            $baseQuery->where('id_etablissement', $actor->id_etablissement);
+            $baseQuery->where('users.id_etablissement', $actor->id_etablissement);
         }
 
         if ($role !== null) {
-            $baseQuery->where('role', $role);
+            $baseQuery->where('users.role', $role);
         }
 
         if ($search !== '') {
             $baseQuery->where(function ($q) use ($search) {
-                $q->where('nom', 'like', "%{$search}%")
-                    ->orWhere('prenom', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('matricule', 'like', "%{$search}%");
+                $q->where('users.nom', 'like', "%{$search}%")
+                    ->orWhere('users.prenom', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('users.matricule', 'like', "%{$search}%");
             });
         }
 
