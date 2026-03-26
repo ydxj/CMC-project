@@ -190,6 +190,19 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         ],
       },
       {
+        label: 'Groupes',
+        items: [
+          { label: 'Groupes', path: '/efp/groupes', icon: 'group' },
+        ],
+      },
+      {
+        label: 'Modules',
+        items: [
+          { label: 'Modules', path: '/efp/modules', icon: 'module' },
+          { label: 'Affecter formateur', path: '/efp/modules/assign', icon: 'link' },
+        ],
+      },
+      {
         label: 'Formateurs',
         items: [
           { label: 'Formateurs', path: '/efp/formateurs', icon: 'teacher' },

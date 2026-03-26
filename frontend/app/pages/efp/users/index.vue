@@ -663,7 +663,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
 
@@ -681,6 +681,7 @@ interface User {
 }
 
 const router = useRouter()
+const route = useRoute()
 const api = useApi()
 const authStore = useAuthStore()
 
@@ -834,6 +835,11 @@ const openCreateModal = () => {
   createSuccess.value = null
   resetCreateForm()
   showCreateModal.value = true
+}
+
+const openCreateFormateurModal = () => {
+  openCreateModal()
+  createForm.value.role = 'FORMATEUR'
 }
 
 const closeCreateModal = () => {
@@ -1002,6 +1008,10 @@ const handleLogout = async () => {
 
 onMounted(() => {
   loadUsers()
+
+  if (route.query.create === 'formateur') {
+    openCreateFormateurModal()
+  }
 })
 </script>
 

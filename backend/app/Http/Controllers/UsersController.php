@@ -64,8 +64,9 @@ class UsersController extends Controller
                 ->leftJoin('formateurs', 'formateurs.id_user', '=', 'users.id')
                 ->leftJoin('formateur_pole', 'formateur_pole.id_formateur', '=', 'formateurs.id')
                 ->leftJoin('poles', 'poles.id', '=', 'formateur_pole.id_pole')
+                ->addSelect(DB::raw('formateurs.id as formateur_id'))
                 ->addSelect(DB::raw("COALESCE(GROUP_CONCAT(DISTINCT poles.nom_pole ORDER BY poles.nom_pole SEPARATOR '||'), '') as pole_names"))
-                ->groupBy('users.id', 'users.nom', 'users.prenom', 'users.email', 'users.role', 'users.matricule', 'users.id_etablissement');
+                ->groupBy('users.id', 'users.nom', 'users.prenom', 'users.email', 'users.role', 'users.matricule', 'users.id_etablissement', 'formateurs.id');
         }
 
         $query->orderBy('users.nom')->orderBy('users.prenom');
@@ -99,6 +100,7 @@ class UsersController extends Controller
 
             if ($role === User::ROLE_FORMATEUR) {
                 $rawPoleNames = (string) ($item->pole_names ?? '');
+                $payload['formateur_id'] = $item->formateur_id ? (int) $item->formateur_id : null;
                 $payload['pole_names'] = $rawPoleNames !== ''
                     ? array_values(array_filter(explode('||', $rawPoleNames)))
                     : [];
@@ -118,6 +120,21 @@ class UsersController extends Controller
     public function store(Request $request)
     {
         $actor = $request->user();
+
+        if ($actor && $actor->role !== User::ROLE_DOSI) {
+            if (!$actor->id_etablissement) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authenticated user does not have an establishment scope',
+                ], 422);
+            }
+
+            // Ensure validation sees establishment scope for non-DOSI users.
+            $request->merge([
+                'id_etablissement' => (int) $actor->id_etablissement,
+            ]);
+        }
+
         $data = $request->validate([
             'nom' => 'required|string|max:100',
             'prenom' => 'required|string|max:100',
@@ -133,13 +150,6 @@ class UsersController extends Controller
         ]);
 
         if ($actor && $actor->role !== User::ROLE_DOSI) {
-            if (!$actor->id_etablissement) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Authenticated user does not have an establishment scope',
-                ], 422);
-            }
-
             $data['id_etablissement'] = (int) $actor->id_etablissement;
         }
 
