@@ -605,8 +605,10 @@ const extractArray = <T>(payload: unknown): T[] => {
   return []
 }
 
-const loadFormateurs = async () => {
-  loading.value = true
+const loadFormateurs = async (options?: { silent?: boolean }) => {
+  if (!options?.silent) {
+    loading.value = true
+  }
   error.value = null
 
   try {
@@ -631,7 +633,9 @@ const loadFormateurs = async () => {
     error.value = err.message || 'Erreur lors du chargement des formateurs'
     console.error('Error loading formateurs:', err)
   } finally {
-    loading.value = false
+    if (!options?.silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -698,7 +702,7 @@ const createUserFromModal = async () => {
       id_pole: userPoleId.value,
     })
 
-    await loadFormateurs()
+    await loadFormateurs({ silent: true })
     closeCreateUserModal()
   } catch (err: any) {
     createUserError.value = err?.data?.message || err?.message || 'Erreur lors de la creation du formateur'
@@ -726,7 +730,7 @@ const addFormateur = async () => {
     })
 
     // Reload formateurs
-    await loadFormateurs()
+    await loadFormateurs({ silent: true })
     closeModal()
   } catch (err: any) {
     error.value = err.message || 'Erreur lors de l\'ajout du formateur'
@@ -751,7 +755,7 @@ const removeFormateur = async (userId: number) => {
     await api.delete(`/poles/${userPoleId.value}/formateurs?id_user=${userId}`)
 
     // Reload formateurs
-    await loadFormateurs()
+    await loadFormateurs({ silent: true })
   } catch (err: any) {
     error.value = err.message || 'Erreur lors de la suppression du formateur'
     console.error('Error removing formateur:', err)

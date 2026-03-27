@@ -492,7 +492,7 @@ class PolesController extends Controller
             ], 404);
         }
 
-        $filieres = $pole->filieres;
+        $filieres = $pole->filieres()->withCount('groupes')->get();
 
         return response()->json([
             'success' => true,
