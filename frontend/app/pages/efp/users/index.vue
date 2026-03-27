@@ -670,6 +670,11 @@ interface UsersPaginatedResponse {
   last_page: number
 }
 
+interface UserMutationResponse {
+  success?: boolean
+  data?: Partial<User> & { id?: number }
+}
+
 const PER_PAGE = 25
 
 const router = useRouter()
@@ -875,9 +880,26 @@ const createUser = async () => {
       userData.id_pole = null
     }
 
-    await api.post('/users', userData)
+    const response = await api.post<UserMutationResponse>('/users', userData)
+    const created = response?.data ?? {}
+    const createdUser: User = {
+      id: Number(created.id ?? Date.now()),
+      matricule: created.matricule ?? userData.matricule,
+      nom: created.nom ?? userData.nom,
+      prenom: created.prenom ?? userData.prenom,
+      email: created.email ?? userData.email,
+      role: 'FORMATEUR',
+    }
+
+    totalItems.value += 1
+    totalPages.value = Math.max(Math.ceil(totalItems.value / PER_PAGE), 1)
+
+    // Keep UI responsive without refetching; show new row immediately on first page.
+    if (currentPage.value === 1) {
+      users.value = [createdUser, ...users.value].slice(0, PER_PAGE)
+    }
+
     createSuccess.value = 'Formateur créé avec succès !'
-    await loadUsers(currentPage.value)
     closeCreateModal()
   } catch (err: any) {
     console.error('Error creating user:', err)
@@ -921,7 +943,7 @@ const saveUserChanges = async () => {
   editError.value = null
 
   try {
-    await api.put(`/users/${editForm.value.id}`, {
+    const response = await api.put<UserMutationResponse>(`/users/${editForm.value.id}`, {
       matricule: editForm.value.matricule,
       nom: editForm.value.nom,
       prenom: editForm.value.prenom,
@@ -929,7 +951,22 @@ const saveUserChanges = async () => {
       role: 'FORMATEUR'
     })
 
-    await loadUsers(currentPage.value)
+    const updated = response?.data ?? {}
+    const updatedId = Number(updated.id ?? editForm.value.id)
+
+    users.value = users.value.map((item) => {
+      if (item.id !== updatedId) return item
+
+      return {
+        ...item,
+        ...updated,
+        matricule: updated.matricule ?? editForm.value.matricule,
+        nom: updated.nom ?? editForm.value.nom,
+        prenom: updated.prenom ?? editForm.value.prenom,
+        email: updated.email ?? editForm.value.email,
+        role: 'FORMATEUR',
+      }
+    })
 
     closeEditModal()
   } catch (err: any) {
