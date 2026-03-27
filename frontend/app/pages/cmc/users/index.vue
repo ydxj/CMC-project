@@ -83,7 +83,7 @@
         <!-- Filter by Role -->
         <div class="mb-6 flex flex-wrap gap-2">
           <button
-            v-for="role in ['Tous', 'DIRECTEUR', 'CHEF_POLE', 'FORMATEUR']"
+            v-for="role in ['Tous', 'CHEF_POLE', 'FORMATEUR']"
             :key="role"
             @click="selectedRole = role"
             :class="[
@@ -132,13 +132,13 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-slate-200">
-                <tr v-if="filteredUsers.length === 0">
+                <tr v-if="users.length === 0">
                   <td colspan="5" class="px-6 py-8 text-center text-slate-500">
                     Aucun utilisateur trouvé
                   </td>
                 </tr>
                 <tr
-                  v-for="user in filteredUsers"
+                  v-for="user in users"
                   :key="user.id"
                   class="hover:bg-slate-50 transition-colors"
                 >
@@ -186,6 +186,58 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <div v-if="totalCount > 0" class="flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p class="text-sm font-medium text-slate-600">
+              {{ paginationDisplay }}
+            </p>
+
+            <div class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white p-2 shadow-sm">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                :disabled="currentPage === 1"
+                @click="goToPreviousPage"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15l-5-5 5-5" />
+                </svg>
+                Precedent
+              </button>
+
+              <div class="flex items-center gap-1 border-l border-r border-slate-200 px-2">
+                <template v-for="(item, index) in paginationItems" :key="`p-${index}`">
+                  <span
+                    v-if="item === '...'"
+                    class="inline-flex h-8 w-8 items-center justify-center text-sm text-slate-400"
+                  >
+                    ...
+                  </span>
+                  <button
+                    v-else
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded text-sm font-semibold transition"
+                    :class="item === currentPage ? 'bg-sky-600 text-white shadow' : 'text-slate-700 hover:bg-slate-100'"
+                    @click="goToPage(item)"
+                  >
+                    {{ item }}
+                  </button>
+                </template>
+              </div>
+
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                :disabled="currentPage === totalPages"
+                @click="goToNextPage"
+              >
+                Suivant
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5l5 5-5 5" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -679,7 +731,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
@@ -695,12 +747,19 @@ interface User {
   prenom: string
   email: string
   matricule: string
-  role: 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+  role: 'DIRECTEUR' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 }
 
 interface PoleItem {
   id: number
   nom_pole: string
+}
+
+interface UsersPaginatedResponse {
+  data?: User[]
+  total?: number
+  current_page?: number
+  last_page?: number
 }
 
 const router = useRouter()
@@ -714,6 +773,10 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
 const selectedRole = ref('Tous')
+const currentPage = ref(1)
+const pageSize = 25
+const totalCount = ref(0)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Create modal state
 const showCreateModal = ref(false)
@@ -742,7 +805,7 @@ const editForm = ref({
   nom: '',
   prenom: '',
   email: '',
-  role: 'DIRECTEUR' as 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+  role: 'DIRECTEUR' as 'DIRECTEUR' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 })
 const editError = ref<string | null>(null)
 const editSubmitting = ref(false)
@@ -759,7 +822,8 @@ const fullName = computed(() => {
 
 const roleLabel = computed(() => {
   const role = authStore.user?.role
-  if (role === 'DIRECTEUR') return 'Directeur Pedagogique'
+  if (role === 'DIRECTEUR' || role === 'DIRECTEUR_CMC') return 'Directeur CMC'
+  if (role === 'DIRECTEUR_EFP') return 'Directeur EFP'
   if (role === 'CHEF_POLE') return 'Chef de Pole'
   if (role === 'FORMATEUR') return 'Formateur'
   return role || 'Utilisateur'
@@ -772,26 +836,60 @@ const userInitials = computed(() => {
   return `${nom}${prenom}`.toUpperCase() || 'CM'
 })
 
-const filteredUsers = computed(() => {
-  let filtered = users.value
-
-  // Filter by role
-  if (selectedRole.value !== 'Tous') {
-    filtered = filtered.filter(user => user.role === selectedRole.value)
+const selectedApiRole = computed(() => {
+  if (selectedRole.value === 'CHEF_POLE' || selectedRole.value === 'FORMATEUR') {
+    return selectedRole.value
   }
 
-  // Filter by search query
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(user => 
-      user.nom.toLowerCase().includes(query) ||
-      user.prenom.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query) ||
-      user.matricule.toLowerCase().includes(query)
-    )
+  return null
+})
+
+const totalPages = computed(() => {
+  const total = Math.ceil(totalCount.value / pageSize)
+  return total > 0 ? total : 1
+})
+
+const paginationStart = computed(() => {
+  if (totalCount.value === 0) return 0
+  return (currentPage.value - 1) * pageSize + 1
+})
+
+const paginationEnd = computed(() => {
+  if (totalCount.value === 0) return 0
+  return Math.min(currentPage.value * pageSize, totalCount.value)
+})
+
+const paginationDisplay = computed(() => {
+  return `Affichage ${paginationStart.value}-${paginationEnd.value} sur ${totalCount.value} utilisateurs`
+})
+
+const paginationItems = computed<(number | '...')[]>(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
   }
 
-  return filtered
+  const items: (number | '...')[] = [1]
+
+  if (current > 3) {
+    items.push('...')
+  }
+
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+
+  for (let i = start; i <= end; i += 1) {
+    items.push(i)
+  }
+
+  if (current < total - 2) {
+    items.push('...')
+  }
+
+  items.push(total)
+  return items
 })
 
 const isCreateFormateurSelected = computed(() => createForm.value.role === 'FORMATEUR')
@@ -804,6 +902,8 @@ const createPasswordMismatch = computed(() => {
 const getRoleLabel = (role: string): string => {
   const labels: Record<string, string> = {
     'DIRECTEUR': 'Directeur',
+    'DIRECTEUR_CMC': 'Directeur CMC',
+    'DIRECTEUR_EFP': 'Directeur EFP',
     'CHEF_POLE': 'Chef de Pôle',
     'FORMATEUR': 'Formateur'
   }
@@ -813,10 +913,25 @@ const getRoleLabel = (role: string): string => {
 const getRoleBadgeClass = (role: string): string => {
   const classes: Record<string, string> = {
     'DIRECTEUR': 'bg-purple-100 text-purple-800',
+    'DIRECTEUR_CMC': 'bg-purple-100 text-purple-800',
+    'DIRECTEUR_EFP': 'bg-indigo-100 text-indigo-800',
     'CHEF_POLE': 'bg-blue-100 text-blue-800',
     'FORMATEUR': 'bg-green-100 text-green-800'
   }
   return classes[role] || 'bg-gray-100 text-gray-800'
+}
+
+const extractArray = <T>(payload: unknown): T[] => {
+  if (Array.isArray(payload)) {
+    return payload as T[]
+  }
+
+  const maybeData = (payload as { data?: unknown } | null)?.data
+  if (Array.isArray(maybeData)) {
+    return maybeData as T[]
+  }
+
+  return []
 }
 
 const loadUsers = async () => {
@@ -824,15 +939,41 @@ const loadUsers = async () => {
   error.value = null
   
   try {
-    const response = await api.get<User[] | { data: User[] }>('/users')
-    // Handle both direct array and { data: [] } format
-    users.value = Array.isArray(response) ? response : ((response as any).data || [])
+    const response = await api.get<User[] | UsersPaginatedResponse>('/users', {
+      page: currentPage.value,
+      per_page: pageSize,
+      q: searchQuery.value.trim() || undefined,
+      role: selectedApiRole.value || undefined,
+    })
+
+    const rows = extractArray<User>(response)
+    users.value = rows
+    totalCount.value = Number((response as UsersPaginatedResponse)?.total ?? rows.length)
+
+    const resolvedTotalPages = Math.max(1, Math.ceil(totalCount.value / pageSize))
+    if (currentPage.value > resolvedTotalPages) {
+      currentPage.value = resolvedTotalPages
+      return
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des utilisateurs'
     console.error('Error loading users:', err)
   } finally {
     loading.value = false
   }
+}
+
+const goToPage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+}
+
+const goToPreviousPage = () => {
+  goToPage(currentPage.value - 1)
+}
+
+const goToNextPage = () => {
+  goToPage(currentPage.value + 1)
 }
 
 const loadPoles = async () => {
@@ -961,18 +1102,7 @@ const saveUserChanges = async () => {
       role: editForm.value.role
     })
 
-    // Update the user in the list
-    const userIndex = users.value.findIndex(u => u.id === editForm.value.id)
-    if (userIndex !== -1) {
-      users.value[userIndex] = {
-        id: editForm.value.id,
-        matricule: editForm.value.matricule,
-        nom: editForm.value.nom,
-        prenom: editForm.value.prenom,
-        email: editForm.value.email,
-        role: editForm.value.role
-      }
-    }
+    await loadUsers()
 
     closeEditModal()
   } catch (err: any) {
@@ -1000,8 +1130,7 @@ const confirmDelete = async () => {
 
   try {
     await api.delete(`/users/${userToDelete.value.id}`)
-    // Remove from list
-    users.value = users.value.filter(u => u.id !== userToDelete.value?.id)
+    await loadUsers()
     closeDeleteModal()
   } catch (err: any) {
     console.error('Error deleting user:', err)
@@ -1031,6 +1160,41 @@ const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
+
+watch(selectedRole, async () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+    return
+  }
+
+  await loadUsers()
+})
+
+watch(searchQuery, () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+
+  searchDebounceTimer = setTimeout(async () => {
+    if (currentPage.value !== 1) {
+      currentPage.value = 1
+      return
+    }
+
+    await loadUsers()
+  }, 350)
+})
+
+watch(currentPage, async () => {
+  await loadUsers()
+})
+
+onBeforeUnmount(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+})
 
 onMounted(() => {
   loadUsers()

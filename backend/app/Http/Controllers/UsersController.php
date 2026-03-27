@@ -39,9 +39,7 @@ class UsersController extends Controller
         if (!$hasFilters && !$hasPagination) {
             $query = User::select('id', 'nom', 'prenom', 'email', 'role', 'matricule', 'id_etablissement');
 
-            if ($actor && $actor->role !== User::ROLE_DOSI && $actor->id_etablissement) {
-                $query->where('users.id_etablissement', $actor->id_etablissement);
-            }
+            $this->applyUserIndexScope($query, $actor);
 
             return response()->json(
                 $query->get()
@@ -50,9 +48,7 @@ class UsersController extends Controller
 
         $baseQuery = User::query();
 
-        if ($actor && $actor->role !== User::ROLE_DOSI && $actor->id_etablissement) {
-            $baseQuery->where('users.id_etablissement', $actor->id_etablissement);
-        }
+        $this->applyUserIndexScope($baseQuery, $actor);
 
         if ($role !== null) {
             $baseQuery->where('users.role', $role);
@@ -126,6 +122,22 @@ class UsersController extends Controller
             'limit' => $limit !== null ? max(0, (int) $limit) : null,
             'offset' => $offset !== null ? max(0, (int) $offset) : 0,
         ]);
+    }
+
+    private function applyUserIndexScope($query, $actor): void
+    {
+        if (!$actor) {
+            return;
+        }
+
+        if ($actor->role !== User::ROLE_DOSI && $actor->id_etablissement) {
+            $query->where('users.id_etablissement', $actor->id_etablissement);
+        }
+
+        if ($actor->role === User::ROLE_DIRECTEUR_CMC) {
+            $query->whereIn('users.role', [User::ROLE_CHEF_POLE, User::ROLE_FORMATEUR]);
+            $query->where('users.id', '!=', $actor->id);
+        }
     }
 
     public function store(Request $request)
