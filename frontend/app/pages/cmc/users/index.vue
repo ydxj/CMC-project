@@ -934,8 +934,12 @@ const extractArray = <T>(payload: unknown): T[] => {
   return []
 }
 
-const loadUsers = async () => {
-  loading.value = true
+const loadUsers = async (options: { silent?: boolean } = {}) => {
+  const { silent = false } = options
+
+  if (!silent) {
+    loading.value = true
+  }
   error.value = null
   
   try {
@@ -959,7 +963,9 @@ const loadUsers = async () => {
     error.value = err.message || 'Erreur lors du chargement des utilisateurs'
     console.error('Error loading users:', err)
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -1050,7 +1056,7 @@ const createUser = async () => {
 
     await api.post('/users', userData)
     createSuccess.value = 'Utilisateur créé avec succès !'
-    await loadUsers()
+    await loadUsers({ silent: true })
     closeCreateModal()
   } catch (err: any) {
     console.error('Error creating user:', err)
@@ -1102,7 +1108,7 @@ const saveUserChanges = async () => {
       role: editForm.value.role
     })
 
-    await loadUsers()
+    await loadUsers({ silent: true })
 
     closeEditModal()
   } catch (err: any) {
@@ -1130,7 +1136,7 @@ const confirmDelete = async () => {
 
   try {
     await api.delete(`/users/${userToDelete.value.id}`)
-    await loadUsers()
+    await loadUsers({ silent: true })
     closeDeleteModal()
   } catch (err: any) {
     console.error('Error deleting user:', err)
