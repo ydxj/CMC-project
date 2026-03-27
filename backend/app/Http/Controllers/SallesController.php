@@ -61,8 +61,16 @@ class SallesController extends Controller
             $query->whereIn('id_pole', $chefPoleIds);
         }
 
+        $query->orderByDesc('id');
+
+        $page = $request->query('page');
+        $perPage = max(1, min((int) $request->query('per_page', 25), 100));
         $limit = $request->query('limit');
         $offset = $request->query('offset');
+
+        if ($page !== null) {
+            return response()->json($query->paginate($perPage));
+        }
 
         if ($limit === null && $offset === null) {
             return response()->json($query->get());
@@ -132,15 +140,16 @@ class SallesController extends Controller
             }
         }
 
-        Salle::create($data);
+        $salle = Salle::create($data);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'id_etablissement' => $data['id_etablissement'],
-                'nom_salle' => $data['nom_salle'],
-                'type_salle' => $data['type_salle'],
-                'id_pole' => $data['id_pole'] ?? null,
+                'id' => $salle->id,
+                'id_etablissement' => $salle->id_etablissement,
+                'nom_salle' => $salle->nom_salle,
+                'type_salle' => $salle->type_salle,
+                'id_pole' => $salle->id_pole,
             ],
         ]);
     }

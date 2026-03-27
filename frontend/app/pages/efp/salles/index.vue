@@ -84,82 +84,94 @@
         </div>
 
         <div v-else class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div v-if="groupedSalles.length === 0" class="p-8 text-center text-slate-500">
+          <div v-if="displayedSalles.length === 0" class="p-8 text-center text-slate-500">
             Aucune salle trouvee
           </div>
 
-          <section
-            v-for="group in groupedSalles"
-            :key="group.key"
-            class="overflow-hidden border-t border-slate-200 first:border-t-0"
-          >
-            <button
-              type="button"
-              class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50"
-              @click="togglePole(group.key)"
-            >
-              <div>
-                <p class="text-sm font-semibold text-slate-900">{{ group.poleName }}</p>
-                <p class="text-xs text-slate-500">{{ group.salles.length }} salle(s)</p>
-              </div>
-              <svg
-                class="h-5 w-5 text-slate-500 transition-transform"
-                :class="isPoleExpanded(group.key) ? 'rotate-180' : ''"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">ID</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nom</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Type</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 bg-white">
+                <tr v-for="salle in displayedSalles" :key="salle.id" class="transition-colors hover:bg-slate-50">
+                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.id }}</td>
+                  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.nom_salle }}</td>
+                  <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                    <span
+                      :class="[
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        salle.type_salle === 'ATELIER' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'
+                      ]"
+                    >
+                      {{ salle.type_salle }}
+                    </span>
+                  </td>
+                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                    <div class="flex items-center justify-end gap-3">
+                      <button @click="openEditModal(salle)" class="text-slate-500 hover:text-green-600" title="Modifier">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button @click="deleteSalle(salle)" class="text-red-600 hover:text-red-900" title="Supprimer">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-            <Transition
-              enter-active-class="transition-all duration-200"
-              enter-from-class="max-h-0 opacity-0"
-              enter-to-class="max-h-[1000px] opacity-100"
-              leave-active-class="transition-all duration-200"
-              leave-from-class="max-h-[1000px] opacity-100"
-              leave-to-class="max-h-0 opacity-0"
-            >
-              <div v-if="isPoleExpanded(group.key)" class="overflow-hidden border-t border-slate-200">
-                <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-slate-200">
-                    <thead class="bg-slate-50">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">ID</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nom</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Type</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200 bg-white">
-                      <tr v-for="salle in group.salles" :key="salle.id" class="transition-colors hover:bg-slate-50">
-                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.id }}</td>
-                        <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ salle.nom_salle }}</td>
-                        <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
-                          <span
-                            :class="[
-                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                              salle.type_salle === 'ATELIER' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'
-                            ]"
-                          >
-                            {{ salle.type_salle }}
-                          </span>
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                          <button @click="deleteSalle(salle)" class="text-red-600 hover:text-red-900" title="Supprimer">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+          <div class="border-t border-slate-200 px-4 py-3 sm:px-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-sm text-slate-600">
+                Affichage {{ paginationStart }}-{{ paginationEnd }} sur {{ totalItems }}
+              </p>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="goToPage(currentPage - 1)"
+                  :disabled="currentPage <= 1"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Precedent
+                </button>
+
+                <button
+                  v-for="pageNumber in visiblePages"
+                  :key="pageNumber"
+                  type="button"
+                  @click="goToPage(pageNumber)"
+                  :class="[
+                    'rounded-lg px-3 py-1.5 text-sm',
+                    pageNumber === currentPage
+                      ? 'bg-sky-600 text-white'
+                      : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+                  ]"
+                >
+                  {{ pageNumber }}
+                </button>
+
+                <button
+                  type="button"
+                  @click="goToPage(currentPage + 1)"
+                  :disabled="currentPage >= totalPages"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Suivant
+                </button>
               </div>
-            </Transition>
-          </section>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -275,6 +287,107 @@
       leave-to-class="opacity-0"
     >
       <div
+        v-if="showEditModal"
+        class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+        @click.self="closeEditModal"
+      >
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="showEditModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">Modifier salle</h3>
+              <button
+                @click="closeEditModal"
+                class="text-slate-500 hover:text-slate-700"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form @submit.prevent="updateSalle" class="p-6 space-y-4">
+              <div v-if="editError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-sm text-red-800">{{ editError }}</p>
+              </div>
+
+              <div v-if="editSuccess" class="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p class="text-sm text-green-800">{{ editSuccess }}</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Type <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="editForm.type_salle"
+                  required
+                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="">Selectionner un type</option>
+                  <option value="SALLE">SALLE</option>
+                  <option value="ATELIER">ATELIER</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Nom de la salle <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="editForm.nom_salle"
+                  type="text"
+                  required
+                  maxlength="100"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 focus:border-transparent focus:ring-2 focus:ring-sky-500"
+                  placeholder="Ex: SD01"
+                />
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  @click="closeEditModal"
+                  class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  :disabled="editSubmitting"
+                  class="px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="editSubmitting" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Mise a jour...
+                  </span>
+                  <span v-else>Mettre a jour</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
         v-if="isSidebarOpen"
         class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
         @click="isSidebarOpen = false"
@@ -340,6 +453,13 @@ interface Salle {
   pole?: Pole
 }
 
+interface SallesPaginatedResponse {
+  data: Salle[]
+  current_page: number
+  last_page: number
+  total: number
+}
+
 const router = useRouter()
 const api = useApi()
 const authStore = useAuthStore()
@@ -349,7 +469,10 @@ const salles = ref<Salle[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
-const expandedPoles = ref<Record<string, boolean>>({})
+const totalItems = ref(0)
+const totalPages = ref(1)
+const currentPage = ref(1)
+const PER_PAGE = 10
 
 // Create modal state
 const showCreateModal = ref(false)
@@ -362,6 +485,21 @@ const createForm = ref({
 })
 const hasCustomName = ref(false)
 
+// Edit modal state
+const showEditModal = ref(false)
+const editSubmitting = ref(false)
+const editError = ref<string | null>(null)
+const editSuccess = ref<string | null>(null)
+const editForm = ref<{
+  id: number | null
+  nom_salle: string
+  type_salle: '' | 'SALLE' | 'ATELIER'
+}>({
+  id: null,
+  nom_salle: '',
+  type_salle: '',
+})
+
 const fullName = computed(() => {
   if (!authStore.user) return 'Utilisateur'
   return `${authStore.user.nom} ${authStore.user.prenom}`.trim()
@@ -369,7 +507,6 @@ const fullName = computed(() => {
 
 const roleLabel = computed(() => {
   const role = authStore.user?.role
-  if (role === 'DIRECTEUR') return 'Directeur Pedagogique'
   if (role === 'CHEF_POLE') return 'Chef de Pole'
   if (role === 'FORMATEUR') return 'Formateur'
   return role || 'Utilisateur'
@@ -382,30 +519,76 @@ const userInitials = computed(() => {
   return `${nom}${prenom}`.toUpperCase() || 'CM'
 })
 
-const groupedSalles = computed(() => {
+const displayedSalles = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  const filtered = !query
+  return !query
     ? salles.value
     : salles.value.filter((salle) =>
         salle.nom_salle.toLowerCase().includes(query) ||
-        salle.type_salle.toLowerCase().includes(query) ||
-        salle.pole?.nom_pole?.toLowerCase().includes(query)
+        salle.type_salle.toLowerCase().includes(query)
       )
+})
 
-  const groupedMap = new Map<string, { key: string; poleName: string; salles: Salle[] }>()
+const paginationStart = computed(() => {
+  if (totalItems.value === 0) return 0
+  return (currentPage.value - 1) * PER_PAGE + 1
+})
 
-  filtered.forEach((salle) => {
-    const key = salle.id_pole ? String(salle.id_pole) : `unknown-${salle.id}`
-    const poleName = salle.pole?.nom_pole || 'Pole inconnu'
+const paginationEnd = computed(() => {
+  if (totalItems.value === 0) return 0
+  return Math.min(currentPage.value * PER_PAGE, totalItems.value)
+})
 
-    if (!groupedMap.has(key)) {
-      groupedMap.set(key, { key, poleName, salles: [] })
-    }
+const visiblePages = computed(() => {
+  const pages: number[] = []
+  const start = Math.max(1, currentPage.value - 2)
+  const end = Math.min(totalPages.value, currentPage.value + 2)
 
-    groupedMap.get(key)?.salles.push(salle)
-  })
+  for (let page = start; page <= end; page++) {
+    pages.push(page)
+  }
 
-  return Array.from(groupedMap.values()).sort((a, b) => a.poleName.localeCompare(b.poleName))
+  return pages
+})
+
+const applyPaginationFromResponse = (response: SallesPaginatedResponse, fallbackPage: number) => {
+  if (response && Array.isArray(response.data) && response.current_page !== undefined) {
+    salles.value = response.data
+    totalItems.value = Number(response.total) || 0
+    totalPages.value = Math.max(Number(response.last_page) || 1, 1)
+    currentPage.value = Math.min(Number(response.current_page) || fallbackPage, totalPages.value)
+    return
+  }
+}
+
+const goToPage = async (page: number) => {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  await loadSalles(page)
+}
+
+const loadSalles = async (page = currentPage.value) => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const response = await api.get<SallesPaginatedResponse>('/salles', {
+      page,
+      per_page: PER_PAGE,
+    })
+    applyPaginationFromResponse(response, page)
+  } catch (err: any) {
+    error.value = err.message || 'Erreur lors du chargement des salles'
+    console.error('Error loading salles:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(searchQuery, async (value, previous) => {
+  if (!value.trim() && previous.trim()) {
+    await loadSalles(1)
+  }
 })
 
 const generatedSalleName = computed(() => {
@@ -443,37 +626,10 @@ watch(generatedSalleName, (suggestedName) => {
   }
 })
 
-const isPoleExpanded = (poleKey: string): boolean => {
-  if (searchQuery.value.trim()) {
-    return true
-  }
-
-  return !!expandedPoles.value[poleKey]
-}
-
-const togglePole = (poleKey: string) => {
-  expandedPoles.value[poleKey] = !expandedPoles.value[poleKey]
-}
-
 const handleNameInput = () => {
   const currentName = createForm.value.nom_salle.trim()
   const suggestedName = generatedSalleName.value.trim()
   hasCustomName.value = currentName.length > 0 && currentName !== suggestedName
-}
-
-const loadSalles = async () => {
-  loading.value = true
-  error.value = null
-
-  try {
-    const response = await api.get<Salle[] | { data: Salle[] }>('/salles')
-    salles.value = Array.isArray(response) ? response : ((response as any).data || [])
-  } catch (err: any) {
-    error.value = err.message || 'Erreur lors du chargement des salles'
-    console.error('Error loading salles:', err)
-  } finally {
-    loading.value = false
-  }
 }
 
 const openCreateModal = () => {
@@ -493,6 +649,75 @@ const closeCreateModal = () => {
   createSuccess.value = null
 }
 
+const openEditModal = (salle: Salle) => {
+  editForm.value = {
+    id: salle.id,
+    nom_salle: salle.nom_salle,
+    type_salle: salle.type_salle,
+  }
+  editError.value = null
+  editSuccess.value = null
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editError.value = null
+  editSuccess.value = null
+}
+
+const updateSalle = async () => {
+  editError.value = null
+  editSuccess.value = null
+
+  if (!editForm.value.id || !editForm.value.nom_salle.trim() || !editForm.value.type_salle) {
+    editError.value = 'Veuillez remplir tous les champs obligatoires.'
+    return
+  }
+
+  editSubmitting.value = true
+
+  try {
+    const payload = {
+      nom_salle: editForm.value.nom_salle.trim(),
+      type_salle: editForm.value.type_salle,
+      id_pole: null,
+    }
+
+    const response = await api.put<{ success?: boolean; data?: Partial<Salle> & { id?: number } }>(
+      `/salles/${editForm.value.id}`,
+      payload,
+    )
+
+    const responseData = response?.data ?? null
+    const updatedId = Number(responseData?.id ?? editForm.value.id)
+
+    salles.value = salles.value.map((item) => {
+      if (item.id !== updatedId) return item
+
+      return {
+        ...item,
+        ...responseData,
+        nom_salle: responseData?.nom_salle ?? payload.nom_salle,
+        type_salle: (responseData?.type_salle as Salle['type_salle'] | undefined) ?? payload.type_salle,
+      }
+    })
+
+    editSuccess.value = 'Salle modifiee avec succes !'
+    closeEditModal()
+  } catch (err: any) {
+    console.error('Error updating salle:', err)
+    if (err.data && err.data.errors) {
+      const errors = Object.values(err.data.errors).flat()
+      editError.value = errors.join(', ')
+    } else {
+      editError.value = err.message || 'Erreur lors de la mise a jour de la salle'
+    }
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
 const createSalle = async () => {
   createError.value = null
   createSuccess.value = null
@@ -507,13 +732,33 @@ const createSalle = async () => {
   try {
     const payload = {
       nom_salle: createForm.value.nom_salle.trim(),
-      type_salle: createForm.value.type_salle,
+      type_salle: createForm.value.type_salle as Salle['type_salle'],
       id_pole: null,
     }
 
-    await api.post('/salles', payload)
+    const response = await api.post<{ success?: boolean; data?: Partial<Salle> & { id?: number } }>(
+      '/salles',
+      payload,
+    )
+
+    const responseData = response?.data ?? {}
+    const createdSalle: Salle = {
+      id: Number(responseData.id ?? Date.now()),
+      nom_salle: responseData.nom_salle ?? payload.nom_salle,
+      type_salle: (responseData.type_salle as Salle['type_salle'] | undefined) ?? payload.type_salle,
+      id_pole: responseData.id_pole ?? null,
+      pole: responseData.pole,
+    }
+
+    totalItems.value += 1
+    totalPages.value = Math.max(Math.ceil(totalItems.value / PER_PAGE), 1)
+
+    // Backend returns newest first; insert locally when user is on first page.
+    if (currentPage.value === 1) {
+      salles.value = [createdSalle, ...salles.value].slice(0, PER_PAGE)
+    }
+
     createSuccess.value = 'Salle creee avec succes !'
-    await loadSalles()
     closeCreateModal()
   } catch (err: any) {
     console.error('Error creating salle:', err)
@@ -535,7 +780,10 @@ const deleteSalle = async (salle: Salle) => {
 
   try {
     await api.delete(`/salles/${salle.id}`)
-    salles.value = salles.value.filter((item) => item.id !== salle.id)
+    const targetPage = salles.value.length === 1 && currentPage.value > 1
+      ? currentPage.value - 1
+      : currentPage.value
+    await loadSalles(targetPage)
   } catch (err: any) {
     alert(err.message || 'Erreur lors de la suppression')
     console.error('Error deleting salle:', err)
@@ -549,7 +797,7 @@ const handleLogout = async () => {
 }
 
 onMounted(() => {
-  loadSalles()
+  loadSalles(1)
 })
 </script>
 
