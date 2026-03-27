@@ -118,7 +118,7 @@ class ModulesController extends Controller
             return $accessDenied;
         }
 
-        Module::create([
+        $module = Module::create([
             'nom_module' => $data['nom_module'],
             'volume_horaire' => $data['volume_horaire'],
             'id_filiere' => $data['id_filiere'],
@@ -127,9 +127,10 @@ class ModulesController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'nom_module' => $data['nom_module'],
-                'volume_horaire' => $data['volume_horaire'],
-                'id_filiere' => $data['id_filiere'],
+                'id' => $module->id,
+                'nom_module' => $module->nom_module,
+                'volume_horaire' => $module->volume_horaire,
+                'id_filiere' => $module->id_filiere,
             ],
         ]);
     }

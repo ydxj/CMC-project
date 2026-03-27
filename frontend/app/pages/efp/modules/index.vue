@@ -89,6 +89,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Volume horaire</th>
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Filiere</th>
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Formateurs affectes</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200 bg-white">
@@ -107,6 +108,13 @@
                         {{ name }}
                       </span>
                     </div>
+                  </td>
+                  <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                    <button @click="openEditModal(moduleItem)" class="text-slate-500 hover:text-green-600" title="Modifier">
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -196,6 +204,77 @@
       leave-to-class="opacity-0"
     >
       <div
+        v-if="showEditModal"
+        class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+        @click.self="closeEditModal"
+      >
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="showEditModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">Modifier module</h3>
+              <button @click="closeEditModal" class="text-slate-500 hover:text-slate-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form @submit.prevent="updateModule" class="p-6 space-y-4">
+              <div v-if="editError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-sm text-red-800">{{ editError }}</p>
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Nom module</label>
+                <input v-model="editForm.nom_module" required class="w-full rounded-lg border border-slate-300 px-3 py-2" type="text" />
+              </div>
+
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-700">Volume horaire</label>
+                  <input v-model.number="editForm.volume_horaire" required min="1" class="w-full rounded-lg border border-slate-300 px-3 py-2" type="number" />
+                </div>
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-slate-700">Filiere</label>
+                  <select v-model="editForm.id_filiere" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    <option disabled value="">Selectionner une filiere</option>
+                    <option v-for="filiere in filieres" :key="filiere.id" :value="filiere.id">
+                      {{ filiere.nom_filiere }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button type="button" @click="closeEditModal" class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
+                  Annuler
+                </button>
+                <button :disabled="editSubmitting" type="submit" class="px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  {{ editSubmitting ? 'Mise a jour...' : 'Mettre a jour' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
         v-if="isSidebarOpen"
         class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
         @click="isSidebarOpen = false"
@@ -252,7 +331,13 @@ interface ModuleItem {
   id: number
   nom_module: string
   volume_horaire: number
+  id_filiere?: number
   filiere?: FiliereItem
+}
+
+interface ModuleMutationResponse {
+  success?: boolean
+  data?: Partial<ModuleItem> & { id?: number; id_filiere?: number }
 }
 
 interface AssignmentItem {
@@ -282,6 +367,15 @@ const showCreateModal = ref(false)
 const createSubmitting = ref(false)
 const createError = ref<string | null>(null)
 const createForm = ref({
+  nom_module: '',
+  volume_horaire: 1,
+  id_filiere: '' as number | '',
+})
+const showEditModal = ref(false)
+const editSubmitting = ref(false)
+const editError = ref<string | null>(null)
+const editForm = ref({
+  id: null as number | null,
   nom_module: '',
   volume_horaire: 1,
   id_filiere: '' as number | '',
@@ -361,6 +455,11 @@ const loadFilieres = async () => {
   }
 }
 
+const resolveFiliere = (idFiliere: number | ''): FiliereItem | undefined => {
+  if (!idFiliere) return undefined
+  return filieres.value.find((filiere) => filiere.id === Number(idFiliere))
+}
+
 const openCreateModal = () => {
   createError.value = null
   createForm.value = {
@@ -376,6 +475,22 @@ const closeCreateModal = () => {
   createError.value = null
 }
 
+const openEditModal = (moduleItem: ModuleItem) => {
+  editError.value = null
+  editForm.value = {
+    id: moduleItem.id,
+    nom_module: moduleItem.nom_module,
+    volume_horaire: moduleItem.volume_horaire,
+    id_filiere: moduleItem.id_filiere ?? moduleItem.filiere?.id ?? '',
+  }
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editError.value = null
+}
+
 const createModule = async () => {
   if (!createForm.value.id_filiere) {
     createError.value = 'Selectionnez une filiere'
@@ -386,19 +501,78 @@ const createModule = async () => {
   createError.value = null
 
   try {
-    await api.post('/modules', {
+    const payload = {
       nom_module: createForm.value.nom_module,
       volume_horaire: createForm.value.volume_horaire,
       id_filiere: createForm.value.id_filiere,
       id_formation: createForm.value.id_filiere,
-    })
+    }
+
+    const response = await api.post<ModuleMutationResponse>('/modules', payload)
+    const responseData = response?.data ?? {}
+    const createdId = Number(responseData.id ?? Date.now())
+    const createdFiliereId = Number(responseData.id_filiere ?? payload.id_filiere)
+    const createdFiliere = resolveFiliere(createdFiliereId)
+
+    modules.value = [
+      {
+        id: createdId,
+        nom_module: responseData.nom_module ?? payload.nom_module,
+        volume_horaire: Number(responseData.volume_horaire ?? payload.volume_horaire),
+        id_filiere: createdFiliereId,
+        filiere: createdFiliere,
+      },
+      ...modules.value,
+    ]
 
     closeCreateModal()
-    await loadModules()
   } catch (err: any) {
     createError.value = err?.data?.message || err?.message || 'Erreur lors de la creation du module'
   } finally {
     createSubmitting.value = false
+  }
+}
+
+const updateModule = async () => {
+  if (!editForm.value.id || !editForm.value.id_filiere) {
+    editError.value = 'Selectionnez une filiere'
+    return
+  }
+
+  editSubmitting.value = true
+  editError.value = null
+
+  try {
+    const payload = {
+      nom_module: editForm.value.nom_module,
+      volume_horaire: editForm.value.volume_horaire,
+      id_filiere: editForm.value.id_filiere,
+    }
+
+    const response = await api.put<ModuleMutationResponse>(`/modules/${editForm.value.id}`, payload)
+    const responseData = response?.data ?? {}
+    const updatedId = Number(responseData.id ?? editForm.value.id)
+    const updatedFiliereId = Number(responseData.id_filiere ?? payload.id_filiere)
+    const updatedFiliere = resolveFiliere(updatedFiliereId)
+
+    modules.value = modules.value.map((item) => {
+      if (item.id !== updatedId) return item
+
+      return {
+        ...item,
+        ...responseData,
+        nom_module: responseData.nom_module ?? payload.nom_module,
+        volume_horaire: Number(responseData.volume_horaire ?? payload.volume_horaire),
+        id_filiere: updatedFiliereId,
+        filiere: updatedFiliere,
+      }
+    })
+
+    closeEditModal()
+  } catch (err: any) {
+    editError.value = err?.data?.message || err?.message || 'Erreur lors de la mise a jour du module'
+  } finally {
+    editSubmitting.value = false
   }
 }
 
