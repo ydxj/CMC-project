@@ -61,8 +61,16 @@ class FiliersController extends Controller
             $query->whereIn('id_pole', $chefPoleIds);
         }
 
+        $query->orderByDesc('id');
+
+        $page = $request->query('page');
+        $perPage = max(1, min((int) $request->query('per_page', 25), 100));
         $limit = $request->query('limit');
         $offset = $request->query('offset');
+
+        if ($page !== null) {
+            return response()->json($query->paginate($perPage));
+        }
 
         if ($limit === null && $offset === null) {
             return response()->json($query->get());
@@ -131,7 +139,7 @@ class FiliersController extends Controller
             }
         }
 
-        Filiere::create([
+        $filiere = Filiere::create([
             'id_etablissement' => $data['id_etablissement'],
             'nom_filiere' => $data['nom_filiere'],
             'id_pole' => $data['id_pole'] ?? null,
@@ -140,9 +148,10 @@ class FiliersController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'id_etablissement' => $data['id_etablissement'],
-                'nom_filiere' => $data['nom_filiere'],
-                'id_pole' => $data['id_pole'] ?? null,
+                'id' => $filiere->id,
+                'id_etablissement' => $filiere->id_etablissement,
+                'nom_filiere' => $filiere->nom_filiere,
+                'id_pole' => $filiere->id_pole,
             ],
         ]);
     }
