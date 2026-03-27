@@ -20,7 +20,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 class="text-sm font-semibold text-slate-900">Utilisateurs</h1>
+            <h1 class="text-sm font-semibold text-slate-900">Formateurs</h1>
           </div>
 
           <div class="flex items-center gap-3">
@@ -46,8 +46,8 @@
         <!-- Page Header -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 mb-6">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Gestion</p>
-          <h2 class="mt-2 text-2xl font-bold text-slate-900">Utilisateurs</h2>
-          <p class="mt-2 text-sm text-slate-600">Gestion des utilisateurs du système</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">Formateurs</h2>
+          <p class="mt-2 text-sm text-slate-600">Gestion des formateurs de l'établissement</p>
         </section>
 
         <!-- Actions Bar -->
@@ -74,27 +74,10 @@
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              Ajouter utilisateur
+              Ajouter formateur
             </button>
             <BulkExcelPanel entity="users" @imported="loadUsers" />
           </div>
-        </div>
-
-        <!-- Filter by Role -->
-        <div class="mb-6 flex flex-wrap gap-2">
-          <button
-            v-for="role in ['Tous', 'DIRECTEUR_EFP', 'CHEF_POLE', 'FORMATEUR']"
-            :key="role"
-            @click="selectedRole = role"
-            :class="[
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              selectedRole === role
-                ? 'bg-sky-100 text-sky-700 ring-1 ring-inset ring-sky-200'
-                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
-            ]"
-          >
-            {{ role === 'Tous' ? role : getRoleLabel(role) }}
-          </button>
         </div>
 
         <!-- Loading State -->
@@ -123,9 +106,6 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Email
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Rôle
-                  </th>
                   <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -133,8 +113,8 @@
               </thead>
               <tbody class="bg-white divide-y divide-slate-200">
                 <tr v-if="filteredUsers.length === 0">
-                  <td colspan="5" class="px-6 py-8 text-center text-slate-500">
-                    Aucun utilisateur trouvé
+                  <td colspan="4" class="px-6 py-8 text-center text-slate-500">
+                    Aucun formateur trouvé
                   </td>
                 </tr>
                 <tr
@@ -150,16 +130,6 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                     {{ user.email }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      :class="[
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getRoleBadgeClass(user.role)
-                      ]"
-                    >
-                      {{ getRoleLabel(user.role) }}
-                    </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-2">
@@ -186,6 +156,48 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <div class="border-t border-slate-200 px-4 py-3 sm:px-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-sm text-slate-600">
+                Affichage {{ paginationStart }}-{{ paginationEnd }} sur {{ totalItems }}
+              </p>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="goToPage(currentPage - 1)"
+                  :disabled="currentPage <= 1"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Precedent
+                </button>
+
+                <button
+                  v-for="pageNumber in visiblePages"
+                  :key="pageNumber"
+                  type="button"
+                  @click="goToPage(pageNumber)"
+                  :class="[
+                    'rounded-lg px-3 py-1.5 text-sm',
+                    pageNumber === currentPage
+                      ? 'bg-sky-600 text-white'
+                      : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+                  ]"
+                >
+                  {{ pageNumber }}
+                </button>
+
+                <button
+                  type="button"
+                  @click="goToPage(currentPage + 1)"
+                  :disabled="currentPage >= totalPages"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Suivant
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -215,7 +227,7 @@
         >
           <div v-if="showCreateModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold text-slate-900">Ajouter utilisateur</h3>
+              <h3 class="text-lg font-semibold text-slate-900">Ajouter formateur</h3>
               <button
                 @click="closeCreateModal"
                 class="text-slate-500 hover:text-slate-700"
@@ -312,22 +324,6 @@
                 </p>
               </div>
 
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
-                  Rôle <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model="createForm.role"
-                  required
-                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
-                >
-                  <option value="">Sélectionner un rôle</option>
-                  <option value="DIRECTEUR_EFP">Directeur</option>
-                  <option value="CHEF_POLE">Chef de Pôle</option>
-                  <option value="FORMATEUR">Formateur</option>
-                </select>
-              </div>
-
               <section
                 v-if="isCreateFormateurSelected"
                 class="rounded-xl border border-sky-200 bg-sky-50/60 p-4"
@@ -402,7 +398,7 @@
                     </svg>
                     Création...
                   </span>
-                  <span v-else>Créer l'utilisateur</span>
+                  <span v-else>Créer le formateur</span>
                 </button>
               </div>
             </form>
@@ -435,7 +431,7 @@
         >
           <div v-if="showEditModal" class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold text-slate-900">Modifier l'utilisateur</h3>
+              <h3 class="text-lg font-semibold text-slate-900">Modifier le formateur</h3>
               <button
                 @click="closeEditModal"
                 class="text-slate-500 hover:text-slate-700"
@@ -503,22 +499,6 @@
                 />
               </div>
 
-              <!-- Rôle -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
-                  Rôle <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model="editForm.role"
-                  required
-                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white text-slate-900"
-                >
-                  <option value="DIRECTEUR_EFP">Directeur</option>
-                  <option value="CHEF_POLE">Chef de Pôle</option>
-                  <option value="FORMATEUR">Formateur</option>
-                </select>
-              </div>
-
               <!-- Form Actions -->
               <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
@@ -580,7 +560,7 @@
               </div>
               <h3 class="mt-4 text-lg font-semibold text-slate-900 text-center">Confirmer la suppression</h3>
               <p class="mt-2 text-sm text-slate-600 text-center">
-                Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{{ userToDelete?.prenom }} {{ userToDelete?.nom }}</strong> ? Cette action ne peut pas être annulée.
+                Êtes-vous sûr de vouloir supprimer le formateur <strong>{{ userToDelete?.prenom }} {{ userToDelete?.nom }}</strong> ? Cette action ne peut pas être annulée.
               </p>
               
               <div class="mt-6 flex items-center justify-center gap-3">
@@ -664,7 +644,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
@@ -680,8 +660,17 @@ interface User {
   prenom: string
   email: string
   matricule: string
-  role: 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
+  role: 'FORMATEUR'
 }
+
+interface UsersPaginatedResponse {
+  data: User[]
+  total: number
+  current_page: number
+  last_page: number
+}
+
+const PER_PAGE = 25
 
 const router = useRouter()
 const route = useRoute()
@@ -693,7 +682,10 @@ const users = ref<User[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
-const selectedRole = ref('Tous')
+const currentPage = ref(1)
+const totalPages = ref(1)
+const totalItems = ref(0)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Create modal state
 const showCreateModal = ref(false)
@@ -707,7 +699,7 @@ const createForm = ref({
   email: '',
   password: '',
   password_confirmation: '',
-  role: '',
+  role: 'FORMATEUR',
   type_formateur: '',
   MHS: null as number | null,
   NBR_semaine: null as number | null,
@@ -722,7 +714,7 @@ const editForm = ref({
   nom: '',
   prenom: '',
   email: '',
-  role: 'DIRECTEUR_EFP' as 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
+  role: 'FORMATEUR' as 'FORMATEUR'
 })
 const editError = ref<string | null>(null)
 const editSubmitting = ref(false)
@@ -753,25 +745,29 @@ const userInitials = computed(() => {
 })
 
 const filteredUsers = computed(() => {
-  let filtered = users.value
+  return users.value
+})
 
-  // Filter by role
-  if (selectedRole.value !== 'Tous') {
-    filtered = filtered.filter(user => user.role === selectedRole.value)
+const paginationStart = computed(() => {
+  if (totalItems.value === 0) return 0
+  return (currentPage.value - 1) * PER_PAGE + 1
+})
+
+const paginationEnd = computed(() => {
+  if (totalItems.value === 0) return 0
+  return Math.min(currentPage.value * PER_PAGE, totalItems.value)
+})
+
+const visiblePages = computed(() => {
+  const pages: number[] = []
+  const start = Math.max(1, currentPage.value - 2)
+  const end = Math.min(totalPages.value, currentPage.value + 2)
+
+  for (let page = start; page <= end; page++) {
+    pages.push(page)
   }
 
-  // Filter by search query
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(user => 
-      user.nom.toLowerCase().includes(query) ||
-      user.prenom.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query) ||
-      user.matricule.toLowerCase().includes(query)
-    )
-  }
-
-  return filtered
+  return pages
 })
 
 const isCreateFormateurSelected = computed(() => createForm.value.role === 'FORMATEUR')
@@ -781,40 +777,35 @@ const createPasswordMismatch = computed(() => {
          createForm.value.password !== createForm.value.password_confirmation
 })
 
-const getRoleLabel = (role: string): string => {
-  const labels: Record<string, string> = {
-    'DIRECTEUR_EFP': 'Directeur',
-    'DIRECTEUR': 'Directeur',
-    'CHEF_POLE': 'Chef de Pôle',
-    'FORMATEUR': 'Formateur'
-  }
-  return labels[role] || role
-}
-
-const getRoleBadgeClass = (role: string): string => {
-  const classes: Record<string, string> = {
-    'DIRECTEUR_EFP': 'bg-purple-100 text-purple-800',
-    'DIRECTEUR': 'bg-purple-100 text-purple-800',
-    'CHEF_POLE': 'bg-blue-100 text-blue-800',
-    'FORMATEUR': 'bg-green-100 text-green-800'
-  }
-  return classes[role] || 'bg-gray-100 text-gray-800'
-}
-
-const loadUsers = async () => {
+const loadUsers = async (page = currentPage.value) => {
   loading.value = true
   error.value = null
   
   try {
-    const response = await api.get<User[] | { data: User[] }>('/users')
-    // Handle both direct array and { data: [] } format
-    users.value = Array.isArray(response) ? response : ((response as any).data || [])
+    const q = searchQuery.value.trim()
+    const response = await api.get<UsersPaginatedResponse>('/users', {
+      role: 'FORMATEUR',
+      page,
+      per_page: PER_PAGE,
+      q: q || undefined,
+    })
+
+    users.value = response.data || []
+    totalItems.value = Number(response.total) || 0
+    totalPages.value = Math.max(Number(response.last_page) || 1, 1)
+    currentPage.value = Math.min(Number(response.current_page) || page, totalPages.value)
   } catch (err: any) {
-    error.value = err.message || 'Erreur lors du chargement des utilisateurs'
+    error.value = err.message || 'Erreur lors du chargement des formateurs'
     console.error('Error loading users:', err)
   } finally {
     loading.value = false
   }
+}
+
+const goToPage = async (page: number) => {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  await loadUsers(page)
 }
 
 const resetCreateForm = () => {
@@ -825,7 +816,7 @@ const resetCreateForm = () => {
     email: '',
     password: '',
     password_confirmation: '',
-    role: '',
+    role: 'FORMATEUR',
     type_formateur: '',
     MHS: null,
     NBR_semaine: null,
@@ -885,8 +876,8 @@ const createUser = async () => {
     }
 
     await api.post('/users', userData)
-    createSuccess.value = 'Utilisateur créé avec succès !'
-    await loadUsers()
+    createSuccess.value = 'Formateur créé avec succès !'
+    await loadUsers(currentPage.value)
     closeCreateModal()
   } catch (err: any) {
     console.error('Error creating user:', err)
@@ -895,7 +886,7 @@ const createUser = async () => {
       const errors = Object.values(err.data.errors).flat()
       createError.value = errors.join(', ')
     } else {
-      createError.value = err.message || 'Erreur lors de la création de l\'utilisateur'
+      createError.value = err.message || 'Erreur lors de la création du formateur'
     }
   } finally {
     createSubmitting.value = false
@@ -914,7 +905,7 @@ const openEditModal = (user: User) => {
     nom: user.nom,
     prenom: user.prenom,
     email: user.email,
-    role: user.role
+    role: 'FORMATEUR'
   }
   editError.value = null
   showEditModal.value = true
@@ -935,21 +926,10 @@ const saveUserChanges = async () => {
       nom: editForm.value.nom,
       prenom: editForm.value.prenom,
       email: editForm.value.email,
-      role: editForm.value.role
+      role: 'FORMATEUR'
     })
 
-    // Update the user in the list
-    const userIndex = users.value.findIndex(u => u.id === editForm.value.id)
-    if (userIndex !== -1) {
-      users.value[userIndex] = {
-        id: editForm.value.id,
-        matricule: editForm.value.matricule,
-        nom: editForm.value.nom,
-        prenom: editForm.value.prenom,
-        email: editForm.value.email,
-        role: editForm.value.role
-      }
-    }
+    await loadUsers(currentPage.value)
 
     closeEditModal()
   } catch (err: any) {
@@ -977,8 +957,12 @@ const confirmDelete = async () => {
 
   try {
     await api.delete(`/users/${userToDelete.value.id}`)
-    // Remove from list
-    users.value = users.value.filter(u => u.id !== userToDelete.value?.id)
+
+    if (users.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
+    }
+
+    await loadUsers(currentPage.value)
     closeDeleteModal()
   } catch (err: any) {
     console.error('Error deleting user:', err)
@@ -989,7 +973,7 @@ const confirmDelete = async () => {
 }
 
 const deleteUser = async (user: User) => {
-  if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${user.prenom} ${user.nom} ?`)) {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer le formateur ${user.prenom} ${user.nom} ?`)) {
     return
   }
 
@@ -1009,8 +993,25 @@ const handleLogout = async () => {
   router.push('/login')
 }
 
+watch(searchQuery, () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+
+  searchDebounceTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadUsers(1)
+  }, 350)
+})
+
+onBeforeUnmount(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+})
+
 onMounted(() => {
-  loadUsers()
+  loadUsers(1)
 
   if (route.query.create === 'formateur') {
     openCreateFormateurModal()

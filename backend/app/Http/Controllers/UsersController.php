@@ -28,7 +28,7 @@ class UsersController extends Controller
         $role = $request->query('role');
         $search = trim((string) $request->query('q', ''));
         $page = $request->query('page');
-        $perPage = max(1, min((int) $request->query('per_page', 25), 100));
+        $perPage = max(1, min((int) $request->query('per_page', 25), 25));
         $limit = $request->query('limit');
         $offset = $request->query('offset');
         $hasFilters = $role !== null || $search !== '';

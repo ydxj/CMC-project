@@ -174,9 +174,9 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
     dashboard: { label: 'Dashboard', path: '/efp', icon: 'home' },
     groups: [
       {
-        label: 'Utilisateurs',
+        label: 'Formateurs',
         items: [
-          { label: 'Utilisateurs', path: '/efp/users', icon: 'users' },
+          { label: 'Formateurs', path: '/efp/users', icon: 'users' },
         ],
       },
       {
@@ -202,12 +202,6 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         items: [
           { label: 'Modules', path: '/efp/modules', icon: 'module' },
           { label: 'Affecter formateur', path: '/efp/modules/assign', icon: 'link' },
-        ],
-      },
-      {
-        label: 'Formateurs',
-        items: [
-          { label: 'Formateurs', path: '/efp/formateurs', icon: 'teacher' },
         ],
       },
       {
