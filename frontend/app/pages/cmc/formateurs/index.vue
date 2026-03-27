@@ -357,7 +357,10 @@ const totalCount = ref(0)
 const viewedFormateur = ref<UserItem | null>(null)
 const isFormateur = computed(() => authStore.user?.role === 'FORMATEUR')
 const isChefPole = computed(() => authStore.user?.role === 'CHEF_POLE')
-const isDirecteur = computed(() => authStore.user?.role === 'DIRECTEUR')
+const isDirecteur = computed(() => {
+  const role = authStore.user?.role
+  return role === 'DIRECTEUR_CMC' || role === 'DIRECTEUR'
+})
 const isPoleScoped = computed(() => isFormateur.value || isChefPole.value)
 const isBackendPaginated = computed(() => isPoleScoped.value || isDirecteur.value)
 const userPoleId = ref<number | null>(null)
@@ -372,7 +375,8 @@ const roleLabel = computed(() => {
 })
 
 const roleLabelFromValue = (role?: string | null) => {
-  if (role === 'DIRECTEUR') return 'Directeur Pedagogique'
+  if (role === 'DIRECTEUR_CMC' || role === 'DIRECTEUR') return 'Directeur CMC'
+  if (role === 'DIRECTEUR_EFP') return 'Directeur EFP'
   if (role === 'CHEF_POLE') return 'Chef de Pole'
   if (role === 'FORMATEUR') return 'Formateur'
   return role || 'Utilisateur'

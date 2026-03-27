@@ -104,6 +104,9 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Chef de pôle
                   </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Formateurs
+                  </th>
                   <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -111,7 +114,7 @@
               </thead>
               <tbody class="bg-white divide-y divide-slate-200">
                 <tr v-if="filteredPoles.length === 0">
-                  <td colspan="4" class="px-6 py-8 text-center text-slate-500">
+                  <td colspan="5" class="px-6 py-8 text-center text-slate-500">
                     Aucun pôle trouvé
                   </td>
                 </tr>
@@ -133,6 +136,9 @@
                     <span v-else class="text-slate-400 italic">
                       Non assigné
                     </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    {{ pole.formateurs_count ?? 0 }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-2">
@@ -499,6 +505,7 @@ interface Pole {
   nom_pole: string
   id_chef: number | null
   chef?: Chef
+  formateurs_count?: number
 }
 
 const router = useRouter()
@@ -697,7 +704,8 @@ const savePoleChanges = async () => {
           id: editForm.value.id,
           nom_pole: editForm.value.nom_pole,
           id_chef: editForm.value.id_chef,
-          chef: assignedChef
+          chef: assignedChef,
+          formateurs_count: currentPole.formateurs_count ?? 0,
         }
       }
     }

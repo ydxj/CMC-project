@@ -59,7 +59,14 @@ class PolesController extends Controller
         $limit = $request->query('limit');
         $offset = $request->query('offset');
 
-        $query = Pole::with('chef');
+        $query = Pole::query()
+            ->with('chef')
+            ->select('poles.*')
+            ->selectSub(function ($subQuery) {
+                $subQuery->from('formateur_pole')
+                    ->selectRaw('COUNT(DISTINCT formateur_pole.id_formateur)')
+                    ->whereColumn('formateur_pole.id_pole', 'poles.id');
+            }, 'formateurs_count');
 
         if ($user && $user->role !== User::ROLE_DOSI && $user->id_etablissement) {
             $query->where('id_etablissement', $user->id_etablissement);
