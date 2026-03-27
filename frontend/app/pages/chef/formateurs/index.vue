@@ -18,7 +18,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 class="text-sm font-semibold text-slate-900">Liste des utilisateurs</h1>
+            <h1 class="text-sm font-semibold text-slate-900">Liste des formateurs</h1>
           </div>
 
           <div class="flex items-center gap-3">
@@ -42,7 +42,7 @@
       <main class="px-4 py-6 sm:px-6 lg:px-8">
         <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Gestion</p>
-          <h2 class="mt-2 text-2xl font-bold text-slate-900">Liste des utilisateurs</h2>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">Liste des formateurs</h2>
           <p class="mt-2 text-sm text-slate-600">Liste des formateurs assignes a votre pole</p>
         </section>
 

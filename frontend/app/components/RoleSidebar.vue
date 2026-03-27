@@ -221,7 +221,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Utilisateurs',
         items: [
-          { label: 'Liste des utilisateurs', path: '/chef/formateurs', icon: 'teacher' },
+          { label: 'Liste des formateurs', path: '/chef/formateurs', icon: 'teacher' },
         ],
       },
       {
