@@ -72,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('groupe/{id_groupe}/modules', [ModuleFormateurController::class, 'getGroupeModules']);
 
         Route::get('emploi-du-temps/weekly', [EmploiDuTempsController::class, 'getWeeklySchedule']);
+        Route::get('emploi-du-temps/formateur/{id}/pdf', [EmploiDuTempsController::class, 'downloadFormateurWeeklyPdf']);
+        Route::get('emploi-du-temps/groupe/{id}/pdf', [EmploiDuTempsController::class, 'downloadGroupeWeeklyPdf']);
         Route::get('emploi-du-temps/formateur/{id}', [EmploiDuTempsController::class, 'getByFormateur']);
         Route::get('emploi-du-temps/groupe/{id}', [EmploiDuTempsController::class, 'getByGroupe']);
         Route::get('emploi-du-temps/salle/{id}', [EmploiDuTempsController::class, 'getBySalle']);
@@ -91,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:FORMATEUR')->group(function () {
         Route::get('me/emploi-du-temps', [EmploiDuTempsController::class, 'getMyWeeklySchedule']);
+        Route::get('me/emploi-du-temps/pdf', [EmploiDuTempsController::class, 'downloadMyWeeklyPdf']);
         Route::get('me/groupes', [ModuleFormateurController::class, 'getMyGroupes']);
         Route::get('me/modules', [ModuleFormateurController::class, 'getMyModules']);
         Route::get('me/module-hours', [ModuleFormateurController::class, 'getMyModuleHours']);

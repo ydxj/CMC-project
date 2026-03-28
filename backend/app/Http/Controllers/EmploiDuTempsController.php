@@ -4,15 +4,178 @@ namespace App\Http\Controllers;
 
 use App\Models\EmploiDuTemps;
 use App\Models\Formateur;
+use App\Models\Groupe;
 use App\Models\ModuleGroupeFormateur;
 use App\Models\Pole;
 use App\Models\Salle;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class EmploiDuTempsController extends Controller
 {
+    private const PDF_SLOT_BOUNDARIES = [
+        '08:30',
+        '09:30',
+        '10:30',
+        '11:30',
+        '12:30',
+        '13:30',
+        '14:30',
+        '15:30',
+        '16:30',
+        '17:30',
+        '18:30',
+    ];
+
+    private const PDF_DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+
+    private function resolveWeekRange(string $startDate): array
+    {
+        $date = Carbon::parse($startDate);
+        $monday = $date->copy()->startOfWeek(Carbon::MONDAY);
+        $saturday = $monday->copy()->addDays(5);
+
+        return [$monday, $saturday];
+    }
+
+    private function getPdfSlotLabels(): array
+    {
+        $labels = [];
+        for ($i = 0; $i < count(self::PDF_SLOT_BOUNDARIES) - 1; $i += 1) {
+            $labels[] = sprintf('%s | %s', self::PDF_SLOT_BOUNDARIES[$i], self::PDF_SLOT_BOUNDARIES[$i + 1]);
+        }
+
+        return $labels;
+    }
+
+    private function overlapsPdfSlot(EmploiDuTemps $session, int $slotIdx): bool
+    {
+        $slotStart = $this->toMinutes(self::PDF_SLOT_BOUNDARIES[$slotIdx] ?? '08:30');
+        $slotEnd = $this->toMinutes(self::PDF_SLOT_BOUNDARIES[$slotIdx + 1] ?? '18:30');
+        $sessionStart = $this->toMinutes($session->heure_debut);
+        $sessionEnd = $this->toMinutes($session->heure_fin);
+
+        return $sessionStart < $slotEnd && $sessionEnd > $slotStart;
+    }
+
+    private function toMinutes(string $hhmm): int
+    {
+        [$h, $m] = array_map('intval', explode(':', substr($hhmm, 0, 5)));
+        return ($h * 60) + $m;
+    }
+
+    private function formatHours(float $hours): string
+    {
+        $rounded = round($hours, 1);
+        if (abs($rounded - floor($rounded)) < 0.01) {
+            return sprintf('%.0f', $rounded);
+        }
+
+        return number_format($rounded, 1, '.', '');
+    }
+
+    private function computeTotalHours(Collection $schedules): float
+    {
+        $minutes = 0;
+        foreach ($schedules as $session) {
+            $minutes += max(0, $this->toMinutes($session->heure_fin) - $this->toMinutes($session->heure_debut));
+        }
+
+        return $minutes / 60;
+    }
+
+    private function getLogoDataUri(): ?string
+    {
+        $paths = [
+            base_path('../frontend/public/logo.png'),
+            public_path('logo.png'),
+        ];
+
+        foreach ($paths as $path) {
+            if (!$path || !is_file($path)) {
+                continue;
+            }
+
+            $data = @file_get_contents($path);
+            if ($data === false) {
+                continue;
+            }
+
+            return 'data:image/png;base64,' . base64_encode($data);
+        }
+
+        return null;
+    }
+
+    private function buildPdfRows(Collection $schedules, Carbon $monday, string $mode): array
+    {
+        $rows = [];
+
+        for ($dayIdx = 0; $dayIdx < count(self::PDF_DAY_NAMES); $dayIdx += 1) {
+            $dayDate = $monday->copy()->addDays($dayIdx)->format('Y-m-d');
+
+            $daySessions = $schedules
+                ->filter(fn ($s) => $s->date_seance === $dayDate)
+                ->sortBy(fn ($s) => $this->toMinutes($s->heure_debut))
+                ->values();
+
+            $cells = [];
+            $slotIdx = 0;
+
+            while ($slotIdx < count(self::PDF_SLOT_BOUNDARIES) - 1) {
+                $session = $daySessions->first(fn ($s) => $this->overlapsPdfSlot($s, $slotIdx));
+
+                if (!$session) {
+                    $cells[] = [
+                        'type' => 'empty',
+                        'colspan' => 1,
+                    ];
+                    $slotIdx += 1;
+                    continue;
+                }
+
+                $span = 0;
+                while ($slotIdx + $span < count(self::PDF_SLOT_BOUNDARIES) - 1 && $this->overlapsPdfSlot($session, $slotIdx + $span)) {
+                    $span += 1;
+                }
+
+                $formateurName = trim(($session->moduleGroupeFormateur->formateur->user->nom ?? '') . ' ' . ($session->moduleGroupeFormateur->formateur->user->prenom ?? ''));
+                $groupeName = $session->moduleGroupeFormateur->groupe->nom_groupe ?? '-';
+                $moduleName = $session->moduleGroupeFormateur->module->nom_module ?? '-';
+                $salleName = $session->salle?->nom_salle;
+
+                $cells[] = [
+                    'type' => 'session',
+                    'colspan' => max(1, $span),
+                    'line1' => $mode === 'groupe' ? Str::upper($formateurName ?: '-') : Str::upper($moduleName),
+                    'line2' => $mode === 'groupe'
+                        ? trim($moduleName . ($salleName ? ' - ' . $salleName : ''))
+                        : trim($groupeName . ($salleName ? ' - ' . $salleName : '')),
+                ];
+
+                $slotIdx += max(1, $span);
+            }
+
+            $rows[] = [
+                'day' => self::PDF_DAY_NAMES[$dayIdx],
+                'cells' => $cells,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function schedulePdfDownload(string $fileName, array $viewData)
+    {
+        return Pdf::loadView('pdfs.emploi-du-temps-weekly', $viewData)
+            ->setPaper('a4', 'landscape')
+            ->download($fileName);
+    }
+
     private function isPastScheduleDate(string $date): bool
     {
         return Carbon::parse($date)->startOfDay()->lt(Carbon::today());
@@ -442,6 +605,137 @@ class EmploiDuTempsController extends Controller
             ],
             'data' => $schedules,
         ]);
+    }
+
+    public function downloadFormateurWeeklyPdf(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+        ]);
+
+        [$monday, $saturday] = $this->resolveWeekRange($data['start_date']);
+
+        $formateur = Formateur::with(['user', 'etablissement', 'poles'])
+            ->find($id);
+
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Formateur not found',
+            ], 404);
+        }
+
+        $query = EmploiDuTemps::whereBetween('date_seance', [$monday->format('Y-m-d'), $saturday->format('Y-m-d')])
+            ->whereHas('moduleGroupeFormateur', function ($q) use ($id) {
+                $q->where('id_formateur', $id);
+            })
+            ->with([
+                'moduleGroupeFormateur.groupe.filiere.pole.etablissement',
+                'moduleGroupeFormateur.module.filiere.pole',
+                'moduleGroupeFormateur.formateur.user',
+                'salle',
+            ])
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut');
+
+        $query = $this->applyChefScopeToSchedules($query, $request->user());
+        $schedules = $query->get();
+
+        $firstSchedule = $schedules->first();
+        $poleName = $firstSchedule?->moduleGroupeFormateur?->module?->filiere?->pole?->nom_pole
+            ?? $formateur->poles->first()?->nom_pole
+            ?? '-';
+        $etablissementName = $firstSchedule?->moduleGroupeFormateur?->module?->filiere?->pole?->etablissement?->nom_etablissement
+            ?? $formateur->etablissement?->nom_etablissement
+            ?? '-';
+
+        $formateurName = trim(($formateur->user->nom ?? '') . ' ' . ($formateur->user->prenom ?? ''));
+        $matricule = $formateur->user->matricule ?? '-';
+
+        $fileName = sprintf('emploi-du-temps-formateur-%s-%s.pdf', Str::slug($formateurName ?: 'formateur'), $monday->format('Y-m-d'));
+
+        return $this->schedulePdfDownload($fileName, [
+            'title' => 'Emploi du temps par Formateur',
+            'slotLabels' => $this->getPdfSlotLabels(),
+            'rows' => $this->buildPdfRows($schedules, $monday, 'formateur'),
+            'logoDataUri' => $this->getLogoDataUri(),
+            'metaLeft' => [
+                $etablissementName,
+                'Pole: ' . $poleName,
+            ],
+            'metaRight' => [
+                sprintf('Formateur : %s | MLE : %s', Str::upper($formateurName ?: '-'), $matricule),
+                sprintf('Semaine : %s au %s', $monday->format('d/m/Y'), $saturday->format('d/m/Y')),
+            ],
+        ]);
+    }
+
+    public function downloadGroupeWeeklyPdf(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+        ]);
+
+        [$monday, $saturday] = $this->resolveWeekRange($data['start_date']);
+
+        $groupe = Groupe::with(['filiere.pole.etablissement'])->find($id);
+
+        if (!$groupe) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Groupe not found',
+            ], 404);
+        }
+
+        $query = EmploiDuTemps::whereBetween('date_seance', [$monday->format('Y-m-d'), $saturday->format('Y-m-d')])
+            ->whereHas('moduleGroupeFormateur', function ($q) use ($id) {
+                $q->where('id_groupe', $id);
+            })
+            ->with([
+                'moduleGroupeFormateur.groupe.filiere.pole.etablissement',
+                'moduleGroupeFormateur.module',
+                'moduleGroupeFormateur.formateur.user',
+                'salle',
+            ])
+            ->orderBy('date_seance')
+            ->orderBy('heure_debut');
+
+        $query = $this->applyChefScopeToSchedules($query, $request->user());
+        $schedules = $query->get();
+
+        $fileName = sprintf('emploi-du-temps-groupe-%s-%s.pdf', Str::slug($groupe->nom_groupe ?: 'groupe'), $monday->format('Y-m-d'));
+        $totalHours = $this->formatHours($this->computeTotalHours($schedules));
+
+        return $this->schedulePdfDownload($fileName, [
+            'title' => 'Emploi du temps par groupe',
+            'slotLabels' => $this->getPdfSlotLabels(),
+            'rows' => $this->buildPdfRows($schedules, $monday, 'groupe'),
+            'logoDataUri' => $this->getLogoDataUri(),
+            'metaLeft' => [
+                $groupe->filiere?->pole?->etablissement?->nom_etablissement ?? '-',
+                'Pole: ' . ($groupe->filiere?->pole?->nom_pole ?? '-'),
+                'Filiere : ' . ($groupe->filiere?->nom_filiere ?? '-'),
+            ],
+            'metaRight' => [
+                sprintf('Groupe : %s | Total : %sH', $groupe->nom_groupe ?? '-', $totalHours),
+                sprintf('Semaine : %s au %s', $monday->format('d/m/Y'), $saturday->format('d/m/Y')),
+            ],
+        ]);
+    }
+
+    public function downloadMyWeeklyPdf(Request $request)
+    {
+        $user = $request->user();
+        $formateur = Formateur::where('id_user', $user->id)->first();
+
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No formateur profile found for current user',
+            ], 404);
+        }
+
+        return $this->downloadFormateurWeeklyPdf($request, (int) $formateur->id);
     }
 
     public function getByFormateur($id)
