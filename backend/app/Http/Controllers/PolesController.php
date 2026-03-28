@@ -5,24 +5,40 @@ namespace App\Http\Controllers;
 use App\Models\Formateur;
 use App\Models\Pole;
 use App\Models\User;
+use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class PolesController extends Controller
 {
+    public function downloadTemplate(ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->downloadTemplate('poles');
+    }
+
+    public function importExcel(Request $request, ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->import($request, 'poles');
+    }
+
     private function getChefPoleIds($user)
     {
-        if (!$user || $user->role !== 'CHEF_POLE') {
+        if (!$user || $user->role !== User::ROLE_CHEF_POLE) {
             return null;
         }
 
-        return Pole::where('id_chef', $user->id)->pluck('id');
+        $query = Pole::where('id_chef', $user->id);
+        if ($user->id_etablissement) {
+            $query->where('id_etablissement', $user->id_etablissement);
+        }
+
+        return $query->pluck('id');
     }
 
     private function ensureChefCanAccessPole(Request $request, int $poleId)
     {
         $user = $request->user();
-        if (!$user || $user->role !== 'CHEF_POLE') {
+        if (!$user || $user->role !== User::ROLE_CHEF_POLE) {
             return null;
         }
 
@@ -43,9 +59,20 @@ class PolesController extends Controller
         $limit = $request->query('limit');
         $offset = $request->query('offset');
 
-        $query = Pole::with('chef');
+        $query = Pole::query()
+            ->with('chef')
+            ->select('poles.*')
+            ->selectSub(function ($subQuery) {
+                $subQuery->from('formateur_pole')
+                    ->selectRaw('COUNT(DISTINCT formateur_pole.id_formateur)')
+                    ->whereColumn('formateur_pole.id_pole', 'poles.id');
+            }, 'formateurs_count');
 
-        if ($user && $user->role === 'CHEF_POLE') {
+        if ($user && $user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $query->where('id_etablissement', $user->id_etablissement);
+        }
+
+        if ($user && $user->role === User::ROLE_CHEF_POLE) {
             $query->where('id_chef', $user->id);
         }
 
@@ -66,24 +93,46 @@ class PolesController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
         $data = $request->validate([
             'nom_pole' => 'required|string|max:100',
             'id_chef' => 'nullable|integer|exists:users,id',
+            'id_etablissement' => 'nullable|integer|exists:etablissements,id',
         ]);
+
+        if ($user && $user->role !== User::ROLE_DOSI) {
+            if (!$user->id_etablissement) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authenticated user does not have an establishment scope',
+                ], 422);
+            }
+
+            $data['id_etablissement'] = (int) $user->id_etablissement;
+        }
+
+        if (empty($data['id_etablissement'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'id_etablissement is required',
+            ], 422);
+        }
 
         Pole::create($data);
 
         return response()->json([
             'success' => true,
             'data' => [
+                'id_etablissement' => $data['id_etablissement'],
                 'nom_pole' => $data['nom_pole'],
-                'id_chef' => $data['id_chef'],
+                'id_chef' => $data['id_chef'] ?? null,
             ],
         ]);
     }
 
     public function update(Request $request, $id)
     {
+        $user = $request->user();
         $pole = Pole::find($id);
 
         if (!$pole) {
@@ -93,14 +142,27 @@ class PolesController extends Controller
             ], 404);
         }
 
+        if ($user && $user->role !== User::ROLE_DOSI && $user->id_etablissement && (int) $pole->id_etablissement !== (int) $user->id_etablissement) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: pole belongs to another establishment',
+            ], 403);
+        }
+
         $data = $request->validate([
             'nom_pole' => 'sometimes|required|string|max:100',
             'id_chef' => 'nullable|integer|exists:users,id',
+            'id_etablissement' => 'sometimes|integer|exists:etablissements,id',
         ]);
+
+        if ($user && $user->role !== User::ROLE_DOSI) {
+            unset($data['id_etablissement']);
+        }
 
         $pole->update([
             'nom_pole' => $data['nom_pole'] ?? $pole->nom_pole,
             'id_chef' => $data['id_chef'] ?? $pole->id_chef,
+            'id_etablissement' => $data['id_etablissement'] ?? $pole->id_etablissement,
         ]);
 
         return response()->json([
@@ -271,7 +333,11 @@ class PolesController extends Controller
         }
 
         // Always resolve the chef's pole from auth to avoid stale/mismatched route IDs.
-        $pole = Pole::where('id_chef', $user->id)->first();
+        $poleQuery = Pole::where('id_chef', $user->id);
+        if ($user->id_etablissement) {
+            $poleQuery->where('id_etablissement', $user->id_etablissement);
+        }
+        $pole = $poleQuery->first();
         if (!$pole) {
             return response()->json([
                 'success' => false,
@@ -285,10 +351,17 @@ class PolesController extends Controller
 
         try {
             $targetUser = User::find($data['id_user']);
-            if (!$targetUser || $targetUser->role !== 'FORMATEUR') {
+            if (!$targetUser || $targetUser->role !== User::ROLE_FORMATEUR) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This user is not a formateur',
+                ], 422);
+            }
+
+            if ((int) $targetUser->id_etablissement !== (int) $pole->id_etablissement) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The selected formateur belongs to another establishment',
                 ], 422);
             }
 
@@ -296,13 +369,14 @@ class PolesController extends Controller
             $formateur = Formateur::firstOrCreate(
                 ['id_user' => $data['id_user']],
                 [
+                    'id_etablissement' => $pole->id_etablissement,
                     'type_formateur' => null,
                     'MHS' => null,
                     'NBR_semaine' => null,
                 ]
             );
 
-            $existing = $pole->formateurs()->wherePivot('id_user', $formateur->id)->exists();
+            $existing = $pole->formateurs()->wherePivot('id_formateur', $formateur->id)->exists();
             if ($existing) {
                 return response()->json([
                     'success' => false,
@@ -334,7 +408,11 @@ class PolesController extends Controller
             ], 401);
         }
 
-        $pole = Pole::where('id_chef', $user->id)->first();
+        $poleQuery = Pole::where('id_chef', $user->id);
+        if ($user->id_etablissement) {
+            $poleQuery->where('id_etablissement', $user->id_etablissement);
+        }
+        $pole = $poleQuery->first();
         if (!$pole) {
             return response()->json([
                 'success' => false,
@@ -414,7 +492,7 @@ class PolesController extends Controller
             ], 404);
         }
 
-        $filieres = $pole->filieres;
+        $filieres = $pole->filieres()->withCount('groupes')->get();
 
         return response()->json([
             'success' => true,

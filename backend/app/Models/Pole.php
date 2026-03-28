@@ -9,6 +9,7 @@ class Pole extends Model
     protected $table = 'poles';
 
     protected $fillable = [
+        'id_etablissement',
         'nom_pole',
         'id_chef',
     ];
@@ -32,6 +33,11 @@ class Pole extends Model
 
     public function formateurs()
     {
-        return $this->belongsToMany(Formateur::class, 'formateur_pole', 'id_pole', 'id_user');
+        return $this->belongsToMany(Formateur::class, 'formateur_pole', 'id_pole', 'id_formateur');
+    }
+
+    public function etablissement()
+    {
+        return $this->belongsTo(Etablissement::class, 'id_etablissement');
     }
 }

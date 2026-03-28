@@ -5,34 +5,64 @@ namespace App\Http\Controllers;
 use App\Models\Module;
 use App\Models\Pole;
 use App\Models\Filiere;
+use App\Models\User;
+use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
 
 class ModulesController extends Controller
 {
+    public function downloadTemplate(ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->downloadTemplate('modules');
+    }
+
+    public function importExcel(Request $request, ExcelBulkService $excelBulkService)
+    {
+        return $excelBulkService->import($request, 'modules');
+    }
+
     private function getChefPoleIds($user)
     {
-        if (!$user || $user->role !== 'CHEF_POLE') {
+        if (!$user || $user->role !== User::ROLE_CHEF_POLE) {
             return null;
         }
 
-        return Pole::where('id_chef', $user->id)->pluck('id');
+        $query = Pole::where('id_chef', $user->id);
+        if ($user->id_etablissement) {
+            $query->where('id_etablissement', $user->id_etablissement);
+        }
+
+        return $query->pluck('id');
     }
 
     private function validateChefFiliereAccess(Request $request, int $filiereId)
     {
-        $chefPoleIds = $this->getChefPoleIds($request->user());
-        if ($chefPoleIds === null) {
+        $user = $request->user();
+        if (!$user) {
             return null;
         }
 
-        $ownsFiliere = Filiere::where('id', $filiereId)
-            ->whereIn('id_pole', $chefPoleIds)
-            ->exists();
+        $query = Filiere::where('id', $filiereId);
+
+        if ($user->role === User::ROLE_CHEF_POLE) {
+            $chefPoleIds = $this->getChefPoleIds($user);
+            if ($chefPoleIds === null) {
+                return null;
+            }
+
+            $query->whereIn('id_pole', $chefPoleIds);
+        }
+
+        if ($user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $query->where('id_etablissement', $user->id_etablissement);
+        }
+
+        $ownsFiliere = $query->exists();
 
         if (!$ownsFiliere) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: this filiere does not belong to your pole',
+                'message' => 'Unauthorized: this filiere is outside your establishment scope',
             ], 403);
         }
 
@@ -41,11 +71,18 @@ class ModulesController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
         $query = Module::query()->with(['filiere.pole']);
-        $chefPoleIds = $this->getChefPoleIds($request->user());
+        $chefPoleIds = $this->getChefPoleIds($user);
         if ($chefPoleIds !== null) {
             $query->whereHas('filiere', function ($q) use ($chefPoleIds) {
                 $q->whereIn('id_pole', $chefPoleIds);
+            });
+        }
+
+        if ($user && $user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $query->whereHas('filiere', function ($q) use ($user) {
+                $q->where('id_etablissement', $user->id_etablissement);
             });
         }
 
@@ -81,7 +118,7 @@ class ModulesController extends Controller
             return $accessDenied;
         }
 
-        Module::create([
+        $module = Module::create([
             'nom_module' => $data['nom_module'],
             'volume_horaire' => $data['volume_horaire'],
             'id_filiere' => $data['id_filiere'],
@@ -90,9 +127,10 @@ class ModulesController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'nom_module' => $data['nom_module'],
-                'volume_horaire' => $data['volume_horaire'],
-                'id_filiere' => $data['id_filiere'],
+                'id' => $module->id,
+                'nom_module' => $module->nom_module,
+                'volume_horaire' => $module->volume_horaire,
+                'id_filiere' => $module->id_filiere,
             ],
         ]);
     }

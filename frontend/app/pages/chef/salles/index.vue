@@ -53,16 +53,19 @@
             placeholder="Rechercher une salle..."
             class="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm"
           />
-          <button
-            type="button"
-            @click="openCreateModal"
-            class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Ajouter salle
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              @click="openCreateModal"
+              class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter salle
+            </button>
+            <BulkExcelPanel entity="salles" @imported="loadSalles" />
+          </div>
         </div>
 
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -238,6 +241,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
+import BulkExcelPanel from '../../../components/BulkExcelPanel.vue'
 
 definePageMeta({ middleware: ['auth'] })
 

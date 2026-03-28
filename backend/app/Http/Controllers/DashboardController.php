@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Etablissement;
 use App\Models\Formateur;
 use App\Models\Groupe;
 use App\Models\Module;
@@ -25,15 +26,19 @@ class DashboardController extends Controller
 
         $role = $user->role;
 
-        if ($role === 'DIRECTEUR') {
-            return $this->getDirecteurStats();
+        if ($role === User::ROLE_DOSI) {
+            return $this->getDosiStats();
         }
 
-        if ($role === 'CHEF_POLE') {
+        if ($role === User::ROLE_DIRECTEUR_CMC || $role === User::ROLE_DIRECTEUR_EFP) {
+            return $this->getDirecteurStats($user);
+        }
+
+        if ($role === User::ROLE_CHEF_POLE) {
             return $this->getChefPoleStats($user->id);
         }
 
-        if ($role === 'FORMATEUR') {
+        if ($role === User::ROLE_FORMATEUR) {
             return $this->getFormateurStats($user->id);
         }
 
@@ -43,12 +48,61 @@ class DashboardController extends Controller
         ], 400);
     }
 
-    private function getDirecteurStats()
+    private function getDosiStats()
     {
-        $poles = Pole::count();
-        $salles = Salle::count();
-        $formateurs = User::where('role', 'FORMATEUR')->count();
-        $modules = Module::count();
+        $etablissements = Etablissement::count();
+        $directeurs = User::whereIn('role', [User::ROLE_DIRECTEUR_CMC, User::ROLE_DIRECTEUR_EFP])->count();
+
+        return response()->json([
+            'success' => true,
+            'stats' => [
+                'etablissements' => $etablissements,
+                'directeurs' => $directeurs,
+            ],
+        ]);
+    }
+
+    private function getDirecteurStats(User $user)
+    {
+        $salleQuery = Salle::query();
+        $moduleQuery = Module::query();
+        $formateurQuery = User::where('role', User::ROLE_FORMATEUR);
+        $groupeQuery = Groupe::query();
+
+        if ($user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $salleQuery->where('id_etablissement', $user->id_etablissement);
+            $formateurQuery->where('id_etablissement', $user->id_etablissement);
+            $moduleQuery->whereHas('filiere', function ($q) use ($user) {
+                $q->where('id_etablissement', $user->id_etablissement);
+            });
+            $groupeQuery->whereHas('filiere', function ($q) use ($user) {
+                $q->where('id_etablissement', $user->id_etablissement);
+            });
+        }
+
+        $salles = $salleQuery->count();
+        $formateurs = $formateurQuery->count();
+        $modules = $moduleQuery->count();
+        $groupes = $groupeQuery->count();
+
+        // EFP directors don't have poles, CMC directors do
+        if ($user->role === User::ROLE_DIRECTEUR_EFP) {
+            return response()->json([
+                'success' => true,
+                'stats' => [
+                    'salles' => $salles,
+                    'formateurs' => $formateurs,
+                    'groupes' => $groupes,
+                    'modules' => $modules,
+                ],
+            ]);
+        }
+
+        $poleQuery = Pole::query();
+        if ($user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $poleQuery->where('id_etablissement', $user->id_etablissement);
+        }
+        $poles = $poleQuery->count();
 
         return response()->json([
             'success' => true,

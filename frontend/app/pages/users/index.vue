@@ -683,7 +683,7 @@ import { useApi } from '../../../composables/useApi'
 import { useAuthStore } from '../../../stores/auth'
 
 definePageMeta({
-  middleware: ['auth']
+  middleware: ['auth'],
 })
 
 interface User {
@@ -1034,3 +1034,4 @@ onMounted(() => {
   loadPoles()
 })
 </script>
+

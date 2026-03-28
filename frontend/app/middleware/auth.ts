@@ -1,6 +1,12 @@
 import { defineNuxtRouteMiddleware, navigateTo } from 'nuxt/app'
 import { useAuthStore } from '../../stores/auth'
 
+const getRoleHomePath = (role?: string) => {
+  if (role === 'DIRECTEUR_CMC') return '/cmc'
+  if (role === 'DIRECTEUR_EFP') return '/efp'
+  return '/dashboard'
+}
+
 export default defineNuxtRouteMiddleware((to, from) => {
   // Local storage is only available client-side for token-based auth.
   if (import.meta.server) {
@@ -19,6 +25,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   // If authenticated and trying to access login page
   if (authStore.isAuthenticated && to.path === '/login') {
-    return navigateTo('/dashboard')
+    return navigateTo(getRoleHomePath(authStore.user?.role))
   }
 })

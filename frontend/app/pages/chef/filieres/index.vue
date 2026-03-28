@@ -47,15 +47,18 @@
         </section>
 
         <div class="mb-6 flex justify-end">
-          <button
-            @click="openCreateModal"
-            class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Ajouter filiere
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              @click="openCreateModal"
+              class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter filiere
+            </button>
+            <BulkExcelPanel entity="filiers" @imported="loadFilieres" />
+          </div>
         </div>
 
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -78,12 +81,14 @@
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">ID</th>
                   <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nom filiere</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Groupes</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200 bg-white">
                 <tr v-for="filiere in filieres" :key="filiere.id" class="hover:bg-slate-50">
                   <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{{ filiere.id }}</td>
                   <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{{ filiere.nom_filiere }}</td>
+                  <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{{ filiere.groupes_count ?? 0 }}</td>
                 </tr>
               </tbody>
             </table>
@@ -208,6 +213,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
+import BulkExcelPanel from '../../../components/BulkExcelPanel.vue'
 
 definePageMeta({ middleware: ['auth'] })
 
@@ -215,6 +221,7 @@ interface FiliereItem {
   id: number
   nom_filiere: string
   id_pole: number
+  groupes_count?: number
 }
 
 const api = useApi()
@@ -260,8 +267,10 @@ const resolveChefPole = async () => {
   poleId.value = (response as any).pole_id
 }
 
-const loadFilieres = async () => {
-  loading.value = true
+const loadFilieres = async (options?: { silent?: boolean }) => {
+  if (!options?.silent) {
+    loading.value = true
+  }
   error.value = null
 
   try {
@@ -274,7 +283,9 @@ const loadFilieres = async () => {
   } catch (err: any) {
     error.value = err?.data?.message || err?.message || 'Erreur lors du chargement des filieres'
   } finally {
-    loading.value = false
+    if (!options?.silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -303,7 +314,7 @@ const createFiliere = async () => {
       id_pole: poleId.value,
     })
 
-    await loadFilieres()
+    await loadFilieres({ silent: true })
     closeCreateModal()
   } catch (err: any) {
     createError.value = err?.data?.message || err?.message || 'Erreur lors de la creation de la filiere'

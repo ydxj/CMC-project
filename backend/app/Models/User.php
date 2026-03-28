@@ -13,6 +13,20 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
 
+    public const ROLE_DOSI = 'DOSI';
+    public const ROLE_DIRECTEUR_CMC = 'DIRECTEUR_CMC';
+    public const ROLE_DIRECTEUR_EFP = 'DIRECTEUR_EFP';
+    public const ROLE_CHEF_POLE = 'CHEF_POLE';
+    public const ROLE_FORMATEUR = 'FORMATEUR';
+
+    public const ROLES = [
+        self::ROLE_DOSI,
+        self::ROLE_DIRECTEUR_CMC,
+        self::ROLE_DIRECTEUR_EFP,
+        self::ROLE_CHEF_POLE,
+        self::ROLE_FORMATEUR,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -27,6 +41,7 @@ class User extends Authenticatable
         'matricule',
         'password',
         'role',
+        'id_etablissement',
     ];
 
     /**
@@ -60,5 +75,10 @@ class User extends Authenticatable
     public function polesAsChef()
     {
         return $this->hasMany(Pole::class, 'id_chef');
+    }
+
+    public function etablissement()
+    {
+        return $this->belongsTo(Etablissement::class, 'id_etablissement');
     }
 }

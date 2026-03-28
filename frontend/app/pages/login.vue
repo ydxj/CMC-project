@@ -161,6 +161,12 @@ const errors = ref({
   password: ''
 })
 
+const getRoleHomePath = (role?: string) => {
+  if (role === 'DIRECTEUR_CMC') return '/cmc'
+  if (role === 'DIRECTEUR_EFP') return '/efp'
+  return '/dashboard'
+}
+
 const validateForm = () => {
   errors.value = { email: '', password: '' }
 
@@ -197,7 +203,7 @@ const handleLogin = async () => {
     const result = await authStore.login(credentials.value)
 
     if (result.success) {
-      router.push('/dashboard')
+      router.push(getRoleHomePath(result.user?.role))
     } else {
       errorMessage.value = result.message || 'Login failed'
     }
@@ -212,7 +218,7 @@ const handleLogin = async () => {
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
-    router.push('/dashboard')
+    router.push(getRoleHomePath(authStore.user?.role))
   }
 })
 </script>

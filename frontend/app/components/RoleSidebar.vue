@@ -2,11 +2,11 @@
   <aside class="h-full border-r border-slate-200 bg-white text-slate-800">
     <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-4">
       <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-200">
-        <img src="/logo.png" alt="CMC logo" class="h-6 w-6 object-contain" />
+        <img :src="sidebarLogoSrc" :alt="`Logo ${sidebarBrandAcronym}`" class="h-6 w-6 object-contain" />
       </div>
       <div>
-        <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">CMC</p>
-        <p class="text-sm font-semibold text-slate-900">Schedule Manager</p>
+        <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">{{ sidebarBrandAcronym }}</p>
+        <p class="text-sm font-semibold text-slate-900">Gestionnaire d'emploi du temps</p>
       </div>
     </div>
 
@@ -69,8 +69,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
 
-type RoleKey = 'DIRECTEUR' | 'CHEF_POLE' | 'FORMATEUR'
+type RoleKey = 'DOSI' | 'DIRECTEUR_CMC' | 'DIRECTEUR_EFP' | 'CHEF_POLE' | 'FORMATEUR'
 type IconName =
   | 'home'
   | 'users'
@@ -109,51 +110,110 @@ interface RoleMenu {
 const props = defineProps<{ role?: string }>()
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const menusByRole: Record<RoleKey, RoleMenu> = {
-  DIRECTEUR: {
+  DOSI: {
     dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
+    groups: [
+      {
+        label: 'Administration Systeme',
+        items: [
+          { label: 'Nouveaux etablissements', path: '/dosi/etablissements', icon: 'building' },
+          { label: 'Nouveaux directeurs', path: '/dosi/directeurs', icon: 'user-plus' },
+        ],
+      },
+    ],
+    settings: { label: 'Parametres', path: '/settings', icon: 'settings' },
+  },
+  DIRECTEUR_CMC: {
+    dashboard: { label: 'Dashboard', path: '/cmc', icon: 'home' },
     groups: [
       {
         label: 'Utilisateurs',
         items: [
-          { label: 'Utilisateurs', path: '/users', icon: 'users' },
+          { label: 'Utilisateurs', path: '/cmc/users', icon: 'users' },
         ],
       },
       {
         label: 'Poles',
         items: [
-          { label: 'Poles', path: '/poles', icon: 'building' },
+          { label: 'Poles', path: '/cmc/poles', icon: 'building' },
         ],
       },
       {
         label: 'Salles & Ateliers',
         items: [
-          { label: 'Salles', path: '/salles', icon: 'door' },
+          { label: 'Salles', path: '/cmc/salles', icon: 'door' },
         ],
       },
       {
         label: 'Filieres',
         items: [
-          { label: 'Filieres', path: '/filieres', icon: 'book' },
+          { label: 'Filieres', path: '/cmc/filieres', icon: 'book' },
         ],
       },
       {
         label: 'Formateurs',
         items: [
-          { label: 'Formateurs', path: '/formateurs', icon: 'teacher' },
+          { label: 'Formateurs', path: '/cmc/formateurs', icon: 'teacher' },
         ],
       },
       {
         label: 'Planification',
         items: [
-          { label: 'Planning par pole', path: '/emploi-du-temps', icon: 'building' },
-          { label: 'Planning multi formateurs', path: '/emploi-du-temps?view=duo', icon: 'users' },
-          { label: 'Planning par formateur', path: '/emploi-du-temps?view=formateur', icon: 'teacher' },
+          { label: 'Planning par pole', path: '/cmc/emploi-du-temps', icon: 'building' },
+          { label: 'Planning multi formateurs', path: '/cmc/emploi-du-temps?view=duo', icon: 'users' },
+          { label: 'Planning par formateur', path: '/cmc/emploi-du-temps?view=formateur', icon: 'teacher' },
         ],
       },
     ],
-    settings: { label: 'Parametres', path: '/settings', icon: 'settings' },
+    settings: { label: 'Parametres', path: '/cmc/settings', icon: 'settings' },
+  },
+  DIRECTEUR_EFP: {
+    dashboard: { label: 'Dashboard', path: '/efp', icon: 'home' },
+    groups: [
+      {
+        label: 'Formateurs',
+        items: [
+          { label: 'Formateurs', path: '/efp/users', icon: 'users' },
+        ],
+      },
+      {
+        label: 'Salles & Ateliers',
+        items: [
+          { label: 'Salles', path: '/efp/salles', icon: 'door' },
+        ],
+      },
+      {
+        label: 'Filieres',
+        items: [
+          { label: 'Filieres', path: '/efp/filieres', icon: 'book' },
+        ],
+      },
+      {
+        label: 'Groupes',
+        items: [
+          { label: 'Groupes', path: '/efp/groupes', icon: 'group' },
+        ],
+      },
+      {
+        label: 'Modules',
+        items: [
+          { label: 'Modules', path: '/efp/modules', icon: 'module' },
+          { label: 'Affecter formateur', path: '/efp/modules/assign', icon: 'link' },
+        ],
+      },
+      {
+        label: 'Planification',
+        items: [
+          { label: 'Planning general', path: '/efp/emploi-du-temps', icon: 'calendar' },
+          { label: 'Planning multi formateurs', path: '/efp/emploi-du-temps?view=duo', icon: 'users' },
+          { label: 'Planning par formateur', path: '/efp/emploi-du-temps?view=formateur', icon: 'teacher' },
+        ],
+      },
+    ],
+    settings: { label: 'Parametres', path: '/efp/settings', icon: 'settings' },
   },
   CHEF_POLE: {
     dashboard: { label: 'Dashboard', path: '/dashboard', icon: 'home' },
@@ -161,7 +221,7 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
       {
         label: 'Utilisateurs',
         items: [
-          { label: 'Liste des utilisateurs', path: '/chef/formateurs', icon: 'teacher' },
+          { label: 'Liste des formateurs', path: '/chef/formateurs', icon: 'teacher' },
         ],
       },
       {
@@ -248,15 +308,31 @@ const iconPaths: Record<IconName, string> = {
 }
 
 const roleKey = computed<RoleKey>(() => {
-  if (props.role === 'DIRECTEUR') return 'DIRECTEUR'
+  if (props.role === 'DOSI') return 'DOSI'
+  if (props.role === 'DIRECTEUR_EFP') return 'DIRECTEUR_EFP'
+  if (props.role === 'DIRECTEUR' || props.role === 'DIRECTEUR_CMC') return 'DIRECTEUR_CMC'
   if (props.role === 'CHEF_POLE') return 'CHEF_POLE'
   return 'FORMATEUR'
 })
 
 const roleLabel = computed(() => {
-  if (roleKey.value === 'DIRECTEUR') return 'Directeur'
+  if (roleKey.value === 'DOSI') return 'DOSI'
+  if (roleKey.value === 'DIRECTEUR_CMC') return 'Directeur CMC'
+  if (roleKey.value === 'DIRECTEUR_EFP') return 'Directeur EFP'
   if (roleKey.value === 'CHEF_POLE') return 'Chef de pole'
   return 'Formateur'
+})
+
+const sidebarBrandAcronym = computed(() => {
+  const typeEtablissement = String(authStore.user?.type_etablissement || '').toUpperCase()
+
+  if (roleKey.value === 'DIRECTEUR_EFP') return 'EFP'
+  if (roleKey.value === 'FORMATEUR' && (typeEtablissement === 'EFP' || typeEtablissement === 'EFM')) return 'EFP'
+  return 'CMC'
+})
+
+const sidebarLogoSrc = computed(() => {
+  return sidebarBrandAcronym.value === 'EFP' ? '/logo.png' : '/cmc.png'
 })
 
 const menu = computed<RoleMenu>(() => menusByRole[roleKey.value])

@@ -9,6 +9,7 @@ class Salle extends Model
     protected $table = 'salles';
 
     protected $fillable = [
+        'id_etablissement',
         'nom_salle',
         'type_salle',
         'id_pole',
@@ -24,5 +25,10 @@ class Salle extends Model
     public function emploisDuTemps()
     {
         return $this->hasMany(EmploiDuTemps::class, 'id_salle');
+    }
+
+    public function etablissement()
+    {
+        return $this->belongsTo(Etablissement::class, 'id_etablissement');
     }
 }

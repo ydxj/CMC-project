@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EtablissementsController;
 use App\Http\Controllers\EmploiDuTempsController;
 use App\Http\Controllers\FiliersController;
 use App\Http\Controllers\GroupesController;
+use App\Http\Controllers\LocationsController;
 use App\Http\Controllers\ModuleFormateurController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PolesController;
@@ -22,37 +24,78 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
 
+    // User listing/creation is needed for DOSI, directors and chef de pole flows.
+    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
+        Route::get('users', [UsersController::class, 'index']);
+        Route::post('users', [UsersController::class, 'store']);
+        Route::get('users/template', [UsersController::class, 'downloadTemplate']);
+        Route::post('users/import', [UsersController::class, 'importExcel']);
+    });
+
+    // Update/delete user accounts are reserved to DOSI and directors.
+    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP')->group(function () {
+        Route::put('users/{id}', [UsersController::class, 'update']);
+        Route::patch('users/{id}', [UsersController::class, 'update']);
+        Route::delete('users/{id}', [UsersController::class, 'destroy']);
+    });
+
     Route::get('/dashboard/stats', [DashboardController::class, 'getStats']);
 
-    Route::resource('users', UsersController::class);
-    Route::resource('poles', PolesController::class);
-    Route::get('my-poles-formateurs', [PolesController::class, 'getMyPoleFormateurs']);
-    Route::resource('salles', SallesController::class);
-    Route::resource('filiers', FiliersController::class);
-    Route::resource('groupes', GroupesController::class);
-    Route::resource('modules', ModulesController::class);
+    Route::middleware('role:DOSI')->group(function () {
+        Route::resource('etablissements', EtablissementsController::class);
+        Route::get('locations/regions', [LocationsController::class, 'regions']);
+        Route::get('locations/regions/{regionId}/cities', [LocationsController::class, 'citiesByRegion']);
+    });
 
-    // Schedule routes
-    Route::get('me/emploi-du-temps', [EmploiDuTempsController::class, 'getMyWeeklySchedule']);
-    Route::get('emploi-du-temps/weekly', [EmploiDuTempsController::class, 'getWeeklySchedule']);
-    Route::get('emploi-du-temps/formateur/{id}', [EmploiDuTempsController::class, 'getByFormateur']);
-    Route::get('emploi-du-temps/groupe/{id}', [EmploiDuTempsController::class, 'getByGroupe']);
-    Route::get('emploi-du-temps/salle/{id}', [EmploiDuTempsController::class, 'getBySalle']);
-    Route::resource('emploi-du-temps', EmploiDuTempsController::class);
+    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
+        Route::get('poles/template', [PolesController::class, 'downloadTemplate']);
+        Route::post('poles/import', [PolesController::class, 'importExcel']);
+        Route::get('salles/template', [SallesController::class, 'downloadTemplate']);
+        Route::post('salles/import', [SallesController::class, 'importExcel']);
+        Route::get('filiers/template', [FiliersController::class, 'downloadTemplate']);
+        Route::post('filiers/import', [FiliersController::class, 'importExcel']);
+        Route::get('groupes/template', [GroupesController::class, 'downloadTemplate']);
+        Route::post('groupes/import', [GroupesController::class, 'importExcel']);
+        Route::get('modules/template', [ModulesController::class, 'downloadTemplate']);
+        Route::post('modules/import', [ModulesController::class, 'importExcel']);
 
-    // Pole-scoped queries
-    Route::get('poles/{id}/formateurs', [PolesController::class, 'getFormateurs']);
-    Route::post('poles/{id}/formateurs', [PolesController::class, 'addFormateur']);
-    Route::delete('poles/{id}/formateurs', [PolesController::class, 'removeFormateur']);
-    Route::get('poles/{id}/salles', [PolesController::class, 'getSalles']);
-    Route::get('poles/{id}/filieres', [PolesController::class, 'getFilieres']);
+        Route::resource('poles', PolesController::class);
+        Route::resource('salles', SallesController::class);
+        Route::resource('filiers', FiliersController::class);
+        Route::resource('groupes', GroupesController::class);
+        Route::resource('modules', ModulesController::class);
 
-    Route::resource('module-formateur', ModuleFormateurController::class);
-    Route::get('me/groupes', [ModuleFormateurController::class, 'getMyGroupes']);
-    Route::get('me/modules', [ModuleFormateurController::class, 'getMyModules']);
-    Route::get('me/module-hours', [ModuleFormateurController::class, 'getMyModuleHours']);
-    Route::get('formateur/{id_formateur}/module-hours', [ModuleFormateurController::class, 'getFormateurModuleHours']);
-    Route::get('formateur/{id_formateur}/modules', [ModuleFormateurController::class, 'getFormateurModules']);
-    Route::get('module/{id_module}/formateurs', [ModuleFormateurController::class, 'getModuleFormateurs']);
-    Route::get('groupe/{id_groupe}/modules', [ModuleFormateurController::class, 'getGroupeModules']);
+        Route::resource('module-formateur', ModuleFormateurController::class);
+        Route::get('formateur/{id_formateur}/module-hours', [ModuleFormateurController::class, 'getFormateurModuleHours']);
+        Route::get('formateur/{id_formateur}/modules', [ModuleFormateurController::class, 'getFormateurModules']);
+        Route::get('module/{id_module}/formateurs', [ModuleFormateurController::class, 'getModuleFormateurs']);
+        Route::get('groupe/{id_groupe}/modules', [ModuleFormateurController::class, 'getGroupeModules']);
+
+        Route::get('emploi-du-temps/weekly', [EmploiDuTempsController::class, 'getWeeklySchedule']);
+        Route::get('emploi-du-temps/formateur/{id}/pdf', [EmploiDuTempsController::class, 'downloadFormateurWeeklyPdf']);
+        Route::get('emploi-du-temps/groupe/{id}/pdf', [EmploiDuTempsController::class, 'downloadGroupeWeeklyPdf']);
+        Route::get('emploi-du-temps/formateur/{id}', [EmploiDuTempsController::class, 'getByFormateur']);
+        Route::get('emploi-du-temps/groupe/{id}', [EmploiDuTempsController::class, 'getByGroupe']);
+        Route::get('emploi-du-temps/salle/{id}', [EmploiDuTempsController::class, 'getBySalle']);
+        Route::resource('emploi-du-temps', EmploiDuTempsController::class);
+    });
+
+    Route::middleware('role:CHEF_POLE')->group(function () {
+        Route::get('my-poles-formateurs', [PolesController::class, 'getMyPoleFormateurs']);
+
+        // Pole-scoped queries
+        Route::get('poles/{id}/formateurs', [PolesController::class, 'getFormateurs']);
+        Route::post('poles/{id}/formateurs', [PolesController::class, 'addFormateur']);
+        Route::delete('poles/{id}/formateurs', [PolesController::class, 'removeFormateur']);
+        Route::get('poles/{id}/salles', [PolesController::class, 'getSalles']);
+        Route::get('poles/{id}/filieres', [PolesController::class, 'getFilieres']);
+    });
+
+    Route::middleware('role:FORMATEUR')->group(function () {
+        Route::get('me/emploi-du-temps', [EmploiDuTempsController::class, 'getMyWeeklySchedule']);
+        Route::get('me/emploi-du-temps/pdf', [EmploiDuTempsController::class, 'downloadMyWeeklyPdf']);
+        Route::get('me/groupes', [ModuleFormateurController::class, 'getMyGroupes']);
+        Route::get('me/modules', [ModuleFormateurController::class, 'getMyModules']);
+        Route::get('me/module-hours', [ModuleFormateurController::class, 'getMyModuleHours']);
+    });
 });

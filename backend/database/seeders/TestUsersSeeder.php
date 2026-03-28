@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Etablissement;
 use App\Models\Formateur;
 use App\Models\Pole;
 use App\Models\User;
@@ -16,6 +17,23 @@ class TestUsersSeeder extends Seeder
      */
     public function run(): void
     {
+        $cityId = DB::table('ville')
+            ->where('ville', 'Casablanca')
+            ->value('id') ?? DB::table('ville')->value('id');
+
+        if (!$cityId) {
+            throw new \RuntimeException('No city found in table `ville`. Seed region/city data before running TestUsersSeeder.');
+        }
+
+        $etablissement = Etablissement::updateOrCreate(
+            ['nom_etablissement' => 'CMC Principal'],
+            [
+                'type_etablissement' => 'CMC',
+                'city_id' => $cityId,
+                'id_directeur' => null,
+            ]
+        );
+
         $users = [
             [
                 'nom' => 'Admin',
@@ -23,7 +41,8 @@ class TestUsersSeeder extends Seeder
                 'email' => 'directeur@cmc.ma',
                 'matricule' => '20001',
                 'password' => Hash::make('Directeur@123'),
-                'role' => 'DIRECTEUR',
+                'role' => User::ROLE_DIRECTEUR_CMC,
+                'id_etablissement' => $etablissement->id,
             ],
             [
                 'nom' => 'Zerhouni Omar',
@@ -31,7 +50,8 @@ class TestUsersSeeder extends Seeder
                 'email' => 'chef.digital@cmc.ma',
                 'matricule' => '20811',
                 'password' => Hash::make('ChefPole@123'),
-                'role' => 'CHEF_POLE',
+                'role' => User::ROLE_CHEF_POLE,
+                'id_etablissement' => $etablissement->id,
             ],
             [
                 'nom' => 'Mounir lahyani',
@@ -39,7 +59,8 @@ class TestUsersSeeder extends Seeder
                 'email' => 'formateur@cmc.ma',
                 'matricule' => '21249',
                 'password' => Hash::make('mounir@123'),
-                'role' => 'FORMATEUR',
+                'role' => User::ROLE_FORMATEUR,
+                'id_etablissement' => $etablissement->id,
             ],
         ];
 
@@ -54,16 +75,22 @@ class TestUsersSeeder extends Seeder
         $formateurUser = User::where('email', 'formateur@cmc.ma')->first();
 
         if ($chefPole) {
-            Pole::updateOrCreate(
+            $pole = Pole::updateOrCreate(
                 ['nom_pole' => 'Digital et Intelligence Artificielle'],
-                ['id_chef' => $chefPole->id]
+                [
+                    'id_chef' => $chefPole->id,
+                    'id_etablissement' => $etablissement->id,
+                ]
             );
+
+            $etablissement->update(['id_directeur' => User::where('email', 'directeur@cmc.ma')->value('id')]);
         }
 
         if ($formateurUser) {
             $formateur = Formateur::updateOrCreate(
                 ['id_user' => $formateurUser->id],
                 [
+                    'id_etablissement' => $etablissement->id,
                     'type_formateur' => 'FP',
                     'MHS' => 18,
                     'NBR_semaine' => 26,
@@ -75,7 +102,7 @@ class TestUsersSeeder extends Seeder
             if ($digitalPole) {
                     DB::table('formateur_pole')->updateOrInsert(
                         [
-                            'id_user' => $formateur->id,
+                            'id_formateur' => $formateur->id,
                             'id_pole' => $digitalPole->id,
                         ],
                         []

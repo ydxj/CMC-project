@@ -45,7 +45,6 @@ INSERT INTO formateurs (id, id_user, type_formateur, MHS, NBR_semaine) VALUES
 (17, 17, 'FP', 18, 24),
 (18, 18, 'FP', 18, 24);
 
-
 -- POLES
 
 INSERT INTO poles (id, nom_pole, id_chef) VALUES

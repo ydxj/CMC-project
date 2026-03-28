@@ -165,15 +165,24 @@
             <p class="text-sm font-semibold text-slate-900">{{ weekLabel }}</p>
             <button @click="goToCurrentWeek" class="mt-0.5 text-xs text-sky-600 hover:underline">Semaine actuelle</button>
           </div>
-          <button
-            @click="nextWeek"
-            class="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Suivante
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              @click="downloadWeeklyPdf"
+              class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="downloadingPdf || (viewMode === 'formateur' ? selectedFormateurIds.length !== 1 : !selectedGroupeId)"
+            >
+              {{ downloadingPdf ? 'Generation PDF...' : 'Download emploi du temps' }}
+            </button>
+            <button
+              @click="nextWeek"
+              class="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Suivante
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div v-if="error" class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -467,6 +476,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRuntimeConfig } from '#app'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../../../../composables/useApi'
 import { useAuthStore } from '../../../../stores/auth'
@@ -551,6 +561,7 @@ const FORMATEUR_COLOR_PALETTE = [
 ] as const
 
 const api = useApi()
+const config = useRuntimeConfig()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -558,6 +569,7 @@ const authStore = useAuthStore()
 const isSidebarOpen = ref(false)
 const loading = ref(true)
 const saving = ref(false)
+const downloadingPdf = ref(false)
 const error = ref<string | null>(null)
 
 const viewMode = ref<ViewMode>(route.query.view === 'groupe' ? 'groupe' : 'formateur')
@@ -1413,6 +1425,69 @@ function nextWeek() {
 
 function goToCurrentWeek() {
   currentWeekStart.value = getMonday(new Date())
+}
+
+async function downloadWeeklyPdf() {
+  if (downloadingPdf.value) return
+
+  const startDate = formatDateISO(currentWeekStart.value)
+  let endpoint = ''
+
+  if (viewMode.value === 'formateur') {
+    if (selectedFormateurIds.value.length !== 1) {
+      error.value = 'Choisissez un seul formateur pour telecharger le PDF.'
+      return
+    }
+    endpoint = `/emploi-du-temps/formateur/${selectedFormateurIds.value[0]}/pdf`
+  } else {
+    if (!selectedGroupeId.value) {
+      error.value = 'Choisissez un groupe pour telecharger le PDF.'
+      return
+    }
+    endpoint = `/emploi-du-temps/groupe/${selectedGroupeId.value}/pdf`
+  }
+
+  downloadingPdf.value = true
+  error.value = null
+
+  try {
+    const params = new URLSearchParams({ start_date: startDate })
+    const headers: Record<string, string> = {
+      Accept: 'application/pdf',
+    }
+
+    if (authStore.token) {
+      headers.Authorization = `Bearer ${authStore.token}`
+    }
+
+    const response = await fetch(`${config.public.apiBase}${endpoint}?${params.toString()}`, {
+      method: 'GET',
+      headers,
+    })
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || 'Echec du telechargement du PDF')
+    }
+
+    const blob = await response.blob()
+    const disposition = response.headers.get('content-disposition') || ''
+    const fileNameMatch = disposition.match(/filename="?([^\";]+)"?/i)
+    const fileName = fileNameMatch?.[1] || `emploi-du-temps-${startDate}.pdf`
+
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(downloadUrl)
+  } catch (err: any) {
+    error.value = err?.message || 'Erreur lors du telechargement du PDF'
+  } finally {
+    downloadingPdf.value = false
+  }
 }
 
 const handleLogout = async () => {

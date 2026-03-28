@@ -9,6 +9,7 @@ class Filiere extends Model
     protected $table = 'filieres';
 
     protected $fillable = [
+        'id_etablissement',
         'nom_filiere',
         'id_pole',
     ];
@@ -28,5 +29,10 @@ class Filiere extends Model
     public function modules()
     {
         return $this->hasMany(Module::class, 'id_filiere');
+    }
+
+    public function etablissement()
+    {
+        return $this->belongsTo(Etablissement::class, 'id_etablissement');
     }
 }
