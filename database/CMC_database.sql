@@ -109,21 +109,28 @@ CREATE TABLE salles (
     INDEX idx_pole (id_pole)
 ) ENGINE=InnoDB;
 
+-- SECTEURS (A secteur can have multiple filieres)
+CREATE TABLE secteurs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nom_secteur VARCHAR(150) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- FILIERES (Associated with Etablissement, not directly with Pole)
 CREATE TABLE filieres (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_etablissement INT NOT NULL,
+    id_secteur INT NULL,
     nom_filiere VARCHAR(150) NOT NULL,
     id_pole INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (id_etablissement, nom_filiere),
-    FOREIGN KEY (id_etablissement) REFERENCES etablissements(id)
-        ON DELETE CASCADE
+    UNIQUE (nom_filiere),
+    FOREIGN KEY (id_secteur) REFERENCES secteurs(id)
+        ON DELETE SET NULL
         ON UPDATE CASCADE,
     FOREIGN KEY (id_pole) REFERENCES poles(id)
         ON DELETE SET NULL
         ON UPDATE CASCADE,
-    INDEX idx_etablissement (id_etablissement),
+    INDEX idx_secteur (id_secteur),
     INDEX idx_pole (id_pole)
 ) ENGINE=InnoDB;
 
@@ -155,12 +162,13 @@ CREATE TABLE modules (
     INDEX idx_filiere (id_filiere)
 ) ENGINE=InnoDB;
 
--- MODULE_GROUPE_FORMATEUR (Many-to-Many between Modules and Formateurs with Groupes)
+-- MODULE_GROUPE_FORMATEUR (Many-to-Many between Modules and Formateurs with Groupes, establishment-scoped)
 CREATE TABLE module_groupe_formateur (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_module INT NOT NULL,
     id_groupe INT NOT NULL,
     id_formateur INT NOT NULL,
+    id_etablissement INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_module) REFERENCES modules(id)
         ON DELETE CASCADE
@@ -171,9 +179,13 @@ CREATE TABLE module_groupe_formateur (
     FOREIGN KEY (id_formateur) REFERENCES formateurs(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
+    FOREIGN KEY (id_etablissement) REFERENCES etablissements(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
     INDEX idx_module (id_module),
     INDEX idx_groupe (id_groupe),
-    INDEX idx_formateur (id_formateur)
+    INDEX idx_formateur (id_formateur),
+    INDEX idx_etablissement (id_etablissement)
 ) ENGINE=InnoDB;
 
 -- EMPLOI DU TEMPS
@@ -183,17 +195,22 @@ CREATE TABLE emploi_du_temps (
     heure_debut TIME NOT NULL,
     heure_fin TIME NOT NULL,
     id_module_groupe_formateur INT NOT NULL,
+    id_module INT NULL,
     id_salle INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (id_module_groupe_formateur) REFERENCES module_groupe_formateur(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
+    FOREIGN KEY (id_module) REFERENCES modules(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
     FOREIGN KEY (id_salle) REFERENCES salles(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
     INDEX idx_date (date_seance),
     INDEX idx_salle (id_salle),
+    INDEX idx_module (id_module),
     INDEX idx_module_groupe_formateur (id_module_groupe_formateur)
 ) ENGINE=InnoDB;
 
@@ -203,7 +220,8 @@ CREATE INDEX idx_formateur_module ON module_groupe_formateur(id_formateur, id_mo
 CREATE INDEX idx_pole_chef ON poles(id_chef);
 CREATE INDEX idx_pole_etablissement ON poles(id_etablissement);
 CREATE INDEX idx_salle_etablissement ON salles(id_etablissement);
-CREATE INDEX idx_filiere_etablissement ON filieres(id_etablissement);
+-- CREATE INDEX idx_filiere_etablissement ON filieres(id_etablissement);
+CREATE INDEX idx_filiere_secteur ON filieres(id_secteur);
 CREATE INDEX idx_groupe_filiere ON groupes(id_filiere);
 CREATE INDEX idx_module_filiere ON modules(id_filiere);
 CREATE INDEX idx_formateur_etablissement ON formateurs(id_etablissement);
