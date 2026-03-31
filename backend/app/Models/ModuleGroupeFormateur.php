@@ -12,6 +12,7 @@ class ModuleGroupeFormateur extends Model
         'id_module',
         'id_groupe',
         'id_formateur',
+        'id_etablissement',
     ];
 
     public $timestamps = false;
@@ -29,6 +30,11 @@ class ModuleGroupeFormateur extends Model
     public function formateur()
     {
         return $this->belongsTo(Formateur::class, 'id_formateur');
+    }
+
+    public function etablissement()
+    {
+        return $this->belongsTo(Etablissement::class, 'id_etablissement');
     }
 
     public function emploisDuTemps()

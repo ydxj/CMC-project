@@ -14,6 +14,7 @@ class Groupe extends Model
         'niveau',
         'creneau',
         'id_filiere',
+        'id_etablissement',
     ];
 
     public $timestamps = false;
