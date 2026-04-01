@@ -73,11 +73,12 @@ class DashboardController extends Controller
             $salleQuery->where('id_etablissement', $user->id_etablissement);
             $formateurQuery->where('id_etablissement', $user->id_etablissement);
             $moduleQuery->whereHas('filiere', function ($q) use ($user) {
-                $q->where('id_etablissement', $user->id_etablissement);
+                $q->whereNull('id_pole')
+                    ->orWhereHas('pole', function ($poleQ) use ($user) {
+                        $poleQ->where('id_etablissement', $user->id_etablissement);
+                    });
             });
-            $groupeQuery->whereHas('filiere', function ($q) use ($user) {
-                $q->where('id_etablissement', $user->id_etablissement);
-            });
+            $groupeQuery->where('id_etablissement', $user->id_etablissement);
         }
 
         $salles = $salleQuery->count();
