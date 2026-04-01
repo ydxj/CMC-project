@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class EmploiDuTempsController extends Controller
@@ -88,12 +89,42 @@ class EmploiDuTempsController extends Controller
         return $minutes / 60;
     }
 
-    private function getLogoDataUri(): ?string
+    private function resolveLogoVariant(Request $request, ?string $etablissementName = null): string
     {
-        $paths = [
-            base_path('../frontend/public/logo.png'),
-            public_path('logo.png'),
-        ];
+        $user = $request->user();
+
+        if (($user?->role ?? null) === 'DIRECTEUR_CMC' || ($user?->role ?? null) === 'CHEF_POLE') {
+            return 'cmc';
+        }
+
+        if (($user?->role ?? null) === 'DIRECTEUR_EFP') {
+            return 'efp';
+        }
+
+        if (is_string($etablissementName) && stripos($etablissementName, 'cmc') !== false) {
+            return 'cmc';
+        }
+
+        return 'efp';
+    }
+
+    private function getLogoDataUri(?string $variant = null): ?string
+    {
+        $variant = $variant === 'cmc' ? 'cmc' : 'efp';
+
+        $paths = $variant === 'cmc'
+            ? [
+                base_path('../frontend/public/cmc.png'),
+                public_path('cmc.png'),
+                base_path('../frontend/public/logo.png'),
+                public_path('logo.png'),
+            ]
+            : [
+                base_path('../frontend/public/logo.png'),
+                public_path('logo.png'),
+                base_path('../frontend/public/cmc.png'),
+                public_path('cmc.png'),
+            ];
 
         foreach ($paths as $path) {
             if (!$path || !is_file($path)) {
@@ -259,40 +290,70 @@ class EmploiDuTempsController extends Controller
             return $query;
         }
 
-        return $query
+        $query = $query
             ->whereHas('moduleGroupeFormateur.module.filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->whereHas('moduleGroupeFormateur.groupe.filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->whereHas('salle', function ($q) use ($chefPoleIds) {
                 $q->whereIn('id_pole', $chefPoleIds);
             });
+
+        if (Schema::hasColumn('module_groupe_formateur', 'id_etablissement') && $user?->id_etablissement) {
+            $query->whereHas('moduleGroupeFormateur', function ($q) use ($user) {
+                $q->where('id_etablissement', $user->id_etablissement);
+            });
+        }
+
+        return $query;
     }
 
     private function validateChefScheduleData(Request $request, int $moduleId, int $groupeId, int $formateurId, int $salleId)
     {
+        $user = $request->user();
         $chefPoleIds = $this->getChefPoleIds($request->user());
         if ($chefPoleIds === null) {
             return null;
         }
 
-        $assignmentAllowed = ModuleGroupeFormateur::where('id_module', $moduleId)
+        $assignmentQuery = ModuleGroupeFormateur::where('id_module', $moduleId)
             ->where('id_groupe', $groupeId)
             ->where('id_formateur', $formateurId)
             ->whereHas('module.filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->whereHas('groupe.filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->whereHas('formateur', function ($q) use ($chefPoleIds) {
                 $q->whereHas('poles', function ($p) use ($chefPoleIds) {
                     $p->whereIn('poles.id', $chefPoleIds);
                 });
-            })
-            ->exists();
+            });
+
+        if (Schema::hasColumn('module_groupe_formateur', 'id_etablissement') && $user?->id_etablissement) {
+            $assignmentQuery->where('id_etablissement', $user->id_etablissement);
+        }
+
+        $assignmentAllowed = $assignmentQuery->exists();
 
         $salleAllowed = Salle::where('id', $salleId)
             ->whereIn('id_pole', $chefPoleIds)
@@ -385,6 +446,7 @@ class EmploiDuTempsController extends Controller
                 'heure_debut' => $data['heure_debut'],
                 'heure_fin' => $data['heure_fin'],
                 'id_module_groupe_formateur' => $assignment->id,
+                'id_module' => $data['id_module'],
                 'id_salle' => $data['id_salle'],
             ]);
         } catch (QueryException $e) {
@@ -498,6 +560,7 @@ class EmploiDuTempsController extends Controller
                 'heure_fin' => $data['heure_fin'] ?? $emploi->heure_fin,
                 'id_salle' => $data['id_salle'] ?? $emploi->id_salle,
                 'id_module_groupe_formateur' => $emploi->id_module_groupe_formateur,
+                'id_module' => $targetModuleId,
             ]);
         } catch (QueryException $e) {
             if ((int) $e->getCode() === 23000) {
@@ -658,7 +721,7 @@ class EmploiDuTempsController extends Controller
             'title' => 'Emploi du temps par Formateur',
             'slotLabels' => $this->getPdfSlotLabels(),
             'rows' => $this->buildPdfRows($schedules, $monday, 'formateur'),
-            'logoDataUri' => $this->getLogoDataUri(),
+            'logoDataUri' => $this->getLogoDataUri($this->resolveLogoVariant($request, $etablissementName)),
             'metaLeft' => [
                 $etablissementName,
                 'Pole: ' . $poleName,
@@ -710,7 +773,7 @@ class EmploiDuTempsController extends Controller
             'title' => 'Emploi du temps par groupe',
             'slotLabels' => $this->getPdfSlotLabels(),
             'rows' => $this->buildPdfRows($schedules, $monday, 'groupe'),
-            'logoDataUri' => $this->getLogoDataUri(),
+            'logoDataUri' => $this->getLogoDataUri($this->resolveLogoVariant($request, $groupe->filiere?->pole?->etablissement?->nom_etablissement)),
             'metaLeft' => [
                 $groupe->filiere?->pole?->etablissement?->nom_etablissement ?? '-',
                 'Pole: ' . ($groupe->filiere?->pole?->nom_pole ?? '-'),
