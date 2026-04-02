@@ -8,6 +8,7 @@ use App\Models\Filiere;
 use App\Models\User;
 use App\Services\ExcelBulkService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class GroupesController extends Controller
 {
@@ -50,11 +51,19 @@ class GroupesController extends Controller
                 return null;
             }
 
-            $query->whereIn('id_pole', $chefPoleIds);
+            $query->where(function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds)
+                    ->orWhereNull('id_pole');
+            });
         }
 
-        if ($user->role !== User::ROLE_DOSI && $user->id_etablissement) {
-            $query->where('id_etablissement', $user->id_etablissement);
+        if (($user->role === User::ROLE_DIRECTEUR_CMC || $user->role === User::ROLE_DIRECTEUR_EFP) && $user->id_etablissement) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('id_pole')
+                    ->orWhereHas('pole', function ($poleQ) use ($user) {
+                        $poleQ->where('id_etablissement', $user->id_etablissement);
+                    });
+            });
         }
 
         $ownsFiliere = $query->exists();
@@ -73,16 +82,21 @@ class GroupesController extends Controller
     {
         $user = $request->user();
         $query = Groupe::query()->with(['filiere.pole']);
+        $hasGroupEtablissement = Schema::hasColumn('groupes', 'id_etablissement');
         $chefPoleIds = $this->getChefPoleIds($user);
         if ($chefPoleIds !== null) {
             $query->whereHas('filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($qq) use ($chefPoleIds) {
+                    $qq->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             });
         }
 
-        if ($user && $user->role !== User::ROLE_DOSI && $user->id_etablissement) {
-            $query->whereHas('filiere', function ($q) use ($user) {
-                $q->where('id_etablissement', $user->id_etablissement);
+        if ($hasGroupEtablissement && $user && $user->role !== User::ROLE_DOSI && $user->id_etablissement) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('id_etablissement')
+                    ->orWhere('id_etablissement', $user->id_etablissement);
             });
         }
 
@@ -106,6 +120,7 @@ class GroupesController extends Controller
 
     public function store(Request $request)
     {
+        $hasGroupEtablissement = Schema::hasColumn('groupes', 'id_etablissement');
         $data = $request->validate([
             'nom_groupe' => 'required|string|max:100',
             'annee' => 'required|string|max:20',
@@ -113,20 +128,32 @@ class GroupesController extends Controller
             'crenau' => 'required|in:CDJ,CDS',
             'id_formation' => 'required|integer|exists:filieres,id',
             'id_filiere' => 'required|integer|exists:filieres,id',
+            'id_etablissement' => ($hasGroupEtablissement ? 'nullable' : 'sometimes').'|integer|exists:etablissements,id',
         ]);
+
+        $user = $request->user();
+        $idEtablissement = $data['id_etablissement'] ?? null;
+        if ($user && $user->role !== User::ROLE_DOSI) {
+            $idEtablissement = $user->id_etablissement;
+        }
 
         $accessDenied = $this->validateChefFiliereAccess($request, (int) $data['id_filiere']);
         if ($accessDenied) {
             return $accessDenied;
         }
 
-        Groupe::create([
+        $createPayload = [
             'nom_groupe' => $data['nom_groupe'],
             'annee' => $data['annee'],
             'niveau' => $data['niveau'],
             'creneau' => $data['crenau'],
             'id_filiere' => $data['id_filiere'],
-        ]);
+        ];
+        if ($hasGroupEtablissement) {
+            $createPayload['id_etablissement'] = $idEtablissement;
+        }
+
+        Groupe::create($createPayload);
 
         return response()->json([
             'success' => true,
@@ -136,6 +163,7 @@ class GroupesController extends Controller
                 'niveau' => $data['niveau'],
                 'creneau' => $data['crenau'],
                 'id_filiere' => $data['id_filiere'],
+                'id_etablissement' => $hasGroupEtablissement ? $idEtablissement : null,
             ],
         ]);
     }
@@ -143,6 +171,7 @@ class GroupesController extends Controller
     public function update(Request $request, $id)
     {
         $groupe = Groupe::find($id);
+        $hasGroupEtablissement = Schema::hasColumn('groupes', 'id_etablissement');
 
         if (!$groupe) {
             return response()->json([
@@ -162,7 +191,16 @@ class GroupesController extends Controller
             'niveau' => 'sometimes|required|in:TS,T,Q,S,FQ,BP,PC',
             'crenau' => 'sometimes|required|in:CDJ,CDS',
             'id_filiere' => 'sometimes|required|integer|exists:filieres,id',
+            'id_etablissement' => ($hasGroupEtablissement ? 'sometimes|nullable' : 'sometimes').'|integer|exists:etablissements,id',
         ]);
+
+        $user = $request->user();
+        $targetEtablissementId = $hasGroupEtablissement
+            ? (array_key_exists('id_etablissement', $data) ? $data['id_etablissement'] : $groupe->id_etablissement)
+            : null;
+        if ($user && $user->role !== User::ROLE_DOSI) {
+            $targetEtablissementId = $user->id_etablissement;
+        }
 
         $targetFiliereId = isset($data['id_filiere']) ? (int) $data['id_filiere'] : (int) $groupe->id_filiere;
         $targetAccessDenied = $this->validateChefFiliereAccess($request, $targetFiliereId);
@@ -170,13 +208,18 @@ class GroupesController extends Controller
             return $targetAccessDenied;
         }
 
-        $groupe->update([
+        $updatePayload = [
             'nom_groupe' => $data['nom_groupe'] ?? $groupe->nom_groupe,
             'annee' => $data['annee'] ?? $groupe->annee,
             'niveau' => $data['niveau'] ?? $groupe->niveau,
             'creneau' => $data['crenau'] ?? $groupe->creneau,
             'id_filiere' => $data['id_filiere'] ?? $groupe->id_filiere,
-        ]);
+        ];
+        if ($hasGroupEtablissement) {
+            $updatePayload['id_etablissement'] = $targetEtablissementId;
+        }
+
+        $groupe->update($updatePayload);
 
         return response()->json([
             'success' => true,

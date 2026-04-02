@@ -3,15 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmploiDuTemps;
+use App\Models\Filiere;
 use App\Models\Formateur;
 use App\Models\Groupe;
 use App\Models\Module;
 use App\Models\ModuleGroupeFormateur;
 use App\Models\Pole;
+use App\Models\Secteur;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ModuleFormateurController extends Controller
 {
+    private function isDirectorRole($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return in_array($user->role, ['DIRECTEUR_CMC', 'DIRECTEUR_EFP'], true);
+    }
+
+    private function getScopedEtablissementId($user): ?int
+    {
+        if (!$this->isDirectorRole($user)) {
+            return null;
+        }
+
+        return $user->id_etablissement ? (int) $user->id_etablissement : null;
+    }
+
     private function timeToMinutes(string $time): int
     {
         $hhmm = substr($time, 0, 5);
@@ -58,20 +80,51 @@ class ModuleFormateurController extends Controller
             return $query;
         }
 
-        return $query
+        $query = $query
             ->whereHas('module.filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->whereHas('groupe.filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->whereHas('formateur.poles', function ($q) use ($chefPoleIds) {
                 $q->whereIn('poles.id', $chefPoleIds);
             });
+
+        if (Schema::hasColumn('module_groupe_formateur', 'id_etablissement') && $user?->id_etablissement) {
+            $query->where('id_etablissement', $user->id_etablissement);
+        }
+
+        return $query;
+    }
+
+    private function applyEtablissementScopeToAssignments($query, $user)
+    {
+        $etablissementId = $this->getScopedEtablissementId($user);
+        if ($etablissementId === null) {
+            return $query;
+        }
+
+        return $query->where('id_etablissement', $etablissementId);
+    }
+
+    private function applyAssignmentScope($query, $user)
+    {
+        $query = $this->applyChefScopeToAssignments($query, $user);
+        return $this->applyEtablissementScopeToAssignments($query, $user);
     }
 
     private function validateChefModuleGroupeFormateur(Request $request, int $moduleId, int $groupeId, int $formateurId)
     {
+        $user = $request->user();
         $chefPoleIds = $this->getChefPoleIds($request->user());
         if ($chefPoleIds === null) {
             return null;
@@ -79,15 +132,32 @@ class ModuleFormateurController extends Controller
 
         $moduleAllowed = Module::where('id', $moduleId)
             ->whereHas('filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->exists();
 
         $groupeAllowed = Groupe::where('id', $groupeId)
             ->whereHas('filiere', function ($q) use ($chefPoleIds) {
-                $q->whereIn('id_pole', $chefPoleIds);
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
             })
             ->exists();
+
+        if ($groupeAllowed && Schema::hasColumn('groupes', 'id_etablissement') && $user?->id_etablissement) {
+            $groupeAllowed = Groupe::where('id', $groupeId)
+                ->where(function ($q) use ($user) {
+                    $q->whereNull('id_etablissement')
+                        ->orWhere('id_etablissement', $user->id_etablissement);
+                })
+                ->exists();
+        }
 
         $formateurAllowed = Formateur::where('id', $formateurId)
             ->whereHas('poles', function ($q) use ($chefPoleIds) {
@@ -111,9 +181,9 @@ class ModuleFormateurController extends Controller
         $offset = $request->query('offset');
 
         $query = ModuleGroupeFormateur::query()
-            ->with(['module', 'groupe', 'formateur.user']);
+            ->with(['module', 'groupe', 'formateur.user', 'etablissement']);
 
-        $query = $this->applyChefScopeToAssignments($query, $request->user());
+        $query = $this->applyAssignmentScope($query, $request->user());
 
         if ($request->has('id_module')) {
             $query->where('id_module', $request->query('id_module'));
@@ -125,6 +195,10 @@ class ModuleFormateurController extends Controller
 
         if ($request->has('id_groupe')) {
             $query->where('id_groupe', $request->query('id_groupe'));
+        }
+
+        if ($request->has('id_etablissement')) {
+            $query->where('id_etablissement', $request->query('id_etablissement'));
         }
 
         if ($offset !== null) {
@@ -146,6 +220,14 @@ class ModuleFormateurController extends Controller
             'id_groupe' => 'required|integer|exists:groupes,id',
         ]);
 
+        $formateur = Formateur::find($data['id_formateur']);
+        if (!$formateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Formateur not found',
+            ], 404);
+        }
+
         $accessDenied = $this->validateChefModuleGroupeFormateur(
             $request,
             (int) $data['id_module'],
@@ -160,6 +242,7 @@ class ModuleFormateurController extends Controller
             'id_module' => $data['id_module'],
             'id_groupe' => $data['id_groupe'],
             'id_formateur' => $data['id_formateur'],
+            'id_etablissement' => $formateur->id_etablissement,
         ]);
 
         return response()->json([
@@ -169,14 +252,15 @@ class ModuleFormateurController extends Controller
                 'id_module' => $data['id_module'],
                 'id_groupe' => $data['id_groupe'],
                 'id_formateur' => $data['id_formateur'],
+                'id_etablissement' => $formateur->id_etablissement,
             ],
         ]);
     }
 
     public function update(Request $request, $id)
     {
-        $baseQuery = ModuleGroupeFormateur::query()->with(['module.filiere', 'groupe.filiere', 'formateur.poles']);
-        $baseQuery = $this->applyChefScopeToAssignments($baseQuery, $request->user());
+        $baseQuery = ModuleGroupeFormateur::query()->with(['module.filiere', 'groupe.filiere', 'formateur.poles', 'etablissement']);
+        $baseQuery = $this->applyAssignmentScope($baseQuery, $request->user());
 
         $assignment = $baseQuery->where('id', $id)->first();
 
@@ -202,22 +286,32 @@ class ModuleFormateurController extends Controller
             return $accessDenied;
         }
 
+        // If formateur is being changed, get the new establishment
+        $targetEtablissementId = $assignment->id_etablissement;
+        if (isset($data['id_formateur']) && (int) $data['id_formateur'] !== (int) $assignment->id_formateur) {
+            $newFormateur = Formateur::find($targetFormateurId);
+            if ($newFormateur) {
+                $targetEtablissementId = $newFormateur->id_etablissement;
+            }
+        }
+
         $assignment->update([
             'id_module' => $targetModuleId,
             'id_groupe' => $targetGroupeId,
             'id_formateur' => $targetFormateurId,
+            'id_etablissement' => $targetEtablissementId,
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $assignment->load(['module', 'groupe', 'formateur.user']),
+            'data' => $assignment->load(['module', 'groupe', 'formateur.user', 'etablissement']),
         ]);
     }
 
     public function destroy(Request $request, $id)
     {
         $baseQuery = ModuleGroupeFormateur::query();
-        $baseQuery = $this->applyChefScopeToAssignments($baseQuery, $request->user());
+        $baseQuery = $this->applyAssignmentScope($baseQuery, $request->user());
 
         $assignment = $baseQuery->where('id', $id)->first();
 
@@ -247,6 +341,14 @@ class ModuleFormateurController extends Controller
             ], 404);
         }
 
+        $userEtablissementId = $this->getScopedEtablissementId($request->user());
+        if ($userEtablissementId !== null && (int) $formateur->id_etablissement !== $userEtablissementId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: this formateur does not belong to your establishment',
+            ], 403);
+        }
+
         $chefPoleIds = $this->getChefPoleIds($request->user());
         if ($chefPoleIds !== null) {
             $allowed = $formateur->poles()->whereIn('poles.id', $chefPoleIds)->exists();
@@ -261,7 +363,7 @@ class ModuleFormateurController extends Controller
         $assignments = ModuleGroupeFormateur::where('id_formateur', $id_formateur)
             ->with(['module', 'groupe']);
 
-        $assignments = $this->applyChefScopeToAssignments($assignments, $request->user());
+        $assignments = $this->applyAssignmentScope($assignments, $request->user());
 
         return response()->json([
             'success' => true,
@@ -299,7 +401,7 @@ class ModuleFormateurController extends Controller
         $assignments = ModuleGroupeFormateur::where('id_module', $id_module)
             ->with(['formateur.user', 'groupe']);
 
-        $assignments = $this->applyChefScopeToAssignments($assignments, $request->user());
+        $assignments = $this->applyAssignmentScope($assignments, $request->user());
 
         return response()->json([
             'success' => true,
@@ -317,6 +419,21 @@ class ModuleFormateurController extends Controller
                 'success' => false,
                 'message' => 'Groupe not found',
             ], 404);
+        }
+
+        $userEtablissementId = $this->getScopedEtablissementId($request->user());
+        if ($userEtablissementId !== null) {
+            $groupeInUserEtablissement = Groupe::where('id', $id_groupe)
+                ->whereHas('filiere.pole', function ($q) use ($userEtablissementId) {
+                    $q->where('id_etablissement', $userEtablissementId);
+                })->exists();
+
+            if (!$groupeInUserEtablissement) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: this groupe does not belong to your establishment',
+                ], 403);
+            }
         }
 
         $chefPoleIds = $this->getChefPoleIds($request->user());
@@ -337,7 +454,7 @@ class ModuleFormateurController extends Controller
         $assignments = ModuleGroupeFormateur::where('id_groupe', $id_groupe)
             ->with(['module', 'formateur.user']);
 
-        $assignments = $this->applyChefScopeToAssignments($assignments, $request->user());
+        $assignments = $this->applyAssignmentScope($assignments, $request->user());
 
         return response()->json([
             'success' => true,
@@ -626,6 +743,167 @@ class ModuleFormateurController extends Controller
                 'planned_hours' => $this->minutesToHours((int) $rows->sum('planned_minutes')),
             ],
             'data' => $rows,
+        ]);
+    }
+
+    public function getAffectationFormData(Request $request)
+    {
+        $user = $request->user();
+        $userEstablissementId = $user?->id_etablissement;
+
+        // Get all secteurs
+        $secteurs = Secteur::all()->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'nom_secteur' => $s->nom_secteur,
+            ];
+        });
+
+        // Get formateurs for this user's establishment (always load)
+        $formateurQuery = Formateur::query();
+        if ($userEstablissementId) {
+            $formateurQuery->where('id_etablissement', $userEstablissementId);
+        }
+        $formateurs = $formateurQuery->with('user')->get()->map(function ($f) {
+            return [
+                'id' => $f->id,
+                'nom' => $f->user?->nom,
+                'prenom' => $f->user?->prenom,
+                'type_formateur' => $f->type_formateur,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'secteurs' => $secteurs,
+            'formateurs' => $formateurs,
+        ]);
+    }
+
+    public function getFilieresBySecteur(Request $request, $id_secteur)
+    {
+        $user = $request->user();
+        $chefPoleIds = $this->getChefPoleIds($user);
+        $userEstablissementId = $user?->id_etablissement;
+
+        $filieresQuery = Filiere::query()
+            ->where('id_secteur', $id_secteur)
+            ->with('secteur');
+
+        if ($chefPoleIds !== null) {
+            $filieresQuery->where(function ($q) use ($chefPoleIds) {
+                $q->whereIn('id_pole', $chefPoleIds)->orWhereNull('id_pole');
+            });
+        } elseif ($this->isDirectorRole($user) && $userEstablissementId) {
+            $filieresQuery->where(function ($q) use ($userEstablissementId) {
+                $q->whereNull('id_pole')
+                    ->orWhereHas('pole', function ($poleQ) use ($userEstablissementId) {
+                        $poleQ->where('id_etablissement', $userEstablissementId);
+                    });
+            });
+        }
+
+        $filieres = $filieresQuery->get()->map(function ($f) {
+            return [
+                'id' => $f->id,
+                'nom_filiere' => $f->nom_filiere,
+                'id_secteur' => $f->id_secteur,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'filieres' => $filieres,
+        ]);
+    }
+
+    public function getModulesByFiliere(Request $request, $id_filiere)
+    {
+        $user = $request->user();
+        $chefPoleIds = $this->getChefPoleIds($user);
+        $userEstablissementId = $user?->id_etablissement;
+
+        $modulesQuery = Module::query()
+            ->where('id_filiere', $id_filiere)
+            ->with('filiere');
+
+        if ($chefPoleIds !== null) {
+            $modulesQuery->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
+            });
+        } elseif ($this->isDirectorRole($user) && $userEstablissementId) {
+            $modulesQuery->whereHas('filiere', function ($q) use ($userEstablissementId) {
+                $q->whereNull('id_pole')
+                    ->orWhereHas('pole', function ($poleQ) use ($userEstablissementId) {
+                        $poleQ->where('id_etablissement', $userEstablissementId);
+                    });
+            });
+        }
+
+        $modules = $modulesQuery->get()->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'nom_module' => $m->nom_module,
+                'id_filiere' => $m->id_filiere,
+                'volume_horaire' => $m->volume_horaire,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'modules' => $modules,
+        ]);
+    }
+
+    public function getGroupesByFiliere(Request $request, $id_filiere)
+    {
+        $user = $request->user();
+        $chefPoleIds = $this->getChefPoleIds($user);
+        $userEstablissementId = $user?->id_etablissement;
+
+        $groupesQuery = Groupe::query()
+            ->where('id_filiere', $id_filiere)
+            ->with('filiere');
+
+        if ($chefPoleIds) {
+            $groupesQuery->whereHas('filiere', function ($q) use ($chefPoleIds) {
+                $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                    $scopeQuery
+                        ->whereIn('id_pole', $chefPoleIds)
+                        ->orWhereNull('id_pole');
+                });
+            });
+        } elseif ($this->isDirectorRole($user) && $userEstablissementId) {
+            $groupesQuery->whereHas('filiere', function ($q) use ($userEstablissementId) {
+                $q->whereNull('id_pole')
+                    ->orWhereHas('pole', function ($poleQ) use ($userEstablissementId) {
+                        $poleQ->where('id_etablissement', $userEstablissementId);
+                    });
+            });
+        }
+
+        $groupes = $groupesQuery->get()->map(function ($g) {
+            return [
+                'id' => $g->id,
+                'nom_groupe' => $g->nom_groupe,
+                'annee' => $g->annee,
+                'niveau' => $g->niveau,
+                'creneau' => $g->creneau,
+                'id_filiere' => $g->id_filiere,
+                'filiere' => $g->filiere ? [
+                    'id' => $g->filiere->id,
+                    'nom' => $g->filiere->nom_filiere,
+                ] : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'groupes' => $groupes,
         ]);
     }
 }
