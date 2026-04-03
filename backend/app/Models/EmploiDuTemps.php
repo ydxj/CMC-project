@@ -13,6 +13,7 @@ class EmploiDuTemps extends Model
         'heure_debut',
         'heure_fin',
         'id_module_groupe_formateur',
+        'id_module',
         'id_salle',
     ];
 
@@ -21,6 +22,11 @@ class EmploiDuTemps extends Model
     public function moduleGroupeFormateur()
     {
         return $this->belongsTo(ModuleGroupeFormateur::class, 'id_module_groupe_formateur');
+    }
+
+    public function module()
+    {
+        return $this->belongsTo(Module::class, 'id_module');
     }
 
     public function salle()

@@ -9,7 +9,7 @@ class Filiere extends Model
     protected $table = 'filieres';
 
     protected $fillable = [
-        'id_etablissement',
+        'id_secteur',
         'nom_filiere',
         'id_pole',
     ];
@@ -34,5 +34,10 @@ class Filiere extends Model
     public function etablissement()
     {
         return $this->belongsTo(Etablissement::class, 'id_etablissement');
+    }
+
+    public function secteur()
+    {
+        return $this->belongsTo(Secteur::class, 'id_secteur');
     }
 }
