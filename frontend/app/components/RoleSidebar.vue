@@ -121,6 +121,9 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         items: [
           { label: 'Nouveaux etablissements', path: '/dosi/etablissements', icon: 'building' },
           { label: 'Nouveaux directeurs', path: '/dosi/directeurs', icon: 'user-plus' },
+          { label: 'Secteurs', path: '/dosi/secteurs', icon: 'book' },
+          { label: 'Filieres', path: '/dosi/filieres', icon: 'book' },
+          { label: 'Modules', path: '/dosi/modules', icon: 'module' },
         ],
       },
     ],
@@ -145,12 +148,6 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         label: 'Salles & Ateliers',
         items: [
           { label: 'Salles', path: '/cmc/salles', icon: 'door' },
-        ],
-      },
-      {
-        label: 'Filieres',
-        items: [
-          { label: 'Filieres', path: '/cmc/filieres', icon: 'book' },
         ],
       },
       {
@@ -186,22 +183,15 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         ],
       },
       {
-        label: 'Filieres',
-        items: [
-          { label: 'Filieres', path: '/efp/filieres', icon: 'book' },
-        ],
-      },
-      {
         label: 'Groupes',
         items: [
           { label: 'Groupes', path: '/efp/groupes', icon: 'group' },
         ],
       },
       {
-        label: 'Modules',
+        label: 'Affectations',
         items: [
-          { label: 'Modules', path: '/efp/modules', icon: 'module' },
-          { label: 'Affecter formateur', path: '/efp/modules/assign', icon: 'link' },
+          { label: 'Affectation formateurs', path: '/efp/affectations', icon: 'link' },
         ],
       },
       {
@@ -225,28 +215,21 @@ const menusByRole: Record<RoleKey, RoleMenu> = {
         ],
       },
       {
-        label: 'Filieres',
-        items: [
-          { label: 'Liste des filieres', path: '/chef/filieres', icon: 'book' },
-        ],
-      },
-      {
         label: 'Groupes',
         items: [
           { label: 'Liste des groupes', path: '/chef/groupes', icon: 'group' },
         ],
       },
       {
-        label: 'Modules',
-        items: [
-          { label: 'Liste des modules', path: '/chef/modules', icon: 'module' },
-          { label: 'Assigner a formateur', path: '/chef/modules/assign', icon: 'link' },
-        ],
-      },
-      {
         label: 'Salles & Ateliers',
         items: [
           { label: 'Liste des salles', path: '/chef/salles', icon: 'door' },
+        ],
+      },
+      {
+        label: 'Affectations',
+        items: [
+          { label: 'Affectation formateurs', path: '/chef/affectations', icon: 'link' },
         ],
       },
       {
