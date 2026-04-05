@@ -10,6 +10,7 @@ use App\Models\Groupe;
 use App\Models\Module;
 use App\Models\Pole;
 use App\Models\Salle;
+use App\Models\Secteur;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -186,13 +187,19 @@ class ExcelBulkService
 
         if ($actor->role === User::ROLE_CHEF_POLE) {
             $poleIds = $this->chefPoleIds($request) ?? [];
-            if (!empty($poleIds)) {
-                $query->whereIn('id_pole', $poleIds);
-            }
+            $query->where(function ($q) use ($poleIds) {
+                $q->whereIn('id_pole', $poleIds)
+                    ->orWhereNull('id_pole');
+            });
         }
 
-        if ($actor->role !== User::ROLE_DOSI && $actor->id_etablissement) {
-            $query->where('id_etablissement', $actor->id_etablissement);
+        if (($actor->role === User::ROLE_DIRECTEUR_CMC || $actor->role === User::ROLE_DIRECTEUR_EFP) && $actor->id_etablissement) {
+            $query->where(function ($q) use ($actor) {
+                $q->whereNull('id_pole')
+                    ->orWhereHas('pole', function ($poleQ) use ($actor) {
+                        $poleQ->where('id_etablissement', $actor->id_etablissement);
+                    });
+            });
         }
 
         return $query->exists();
@@ -376,67 +383,45 @@ class ExcelBulkService
                 },
             ],
             'filiers' => [
-                'template_headings' => ['nom_filiere'],
+                'template_headings' => ['nom_filiere', 'id_secteur'],
                 'template_sample_rows' => [
-                    ['Developpement Digital'],
+                    ['Developpement Digital', 1],
                 ],
                 'rules' => fn (array $row, Request $request): array => [
                     'nom_filiere' => 'required|string|max:150',
+                    'id_secteur' => 'nullable|integer|exists:secteurs,id',
                 ],
                 'duplicate_check' => function (array $row, Request $request, array &$context): array {
-                    $etabId = $this->actorEtablissementId($request);
-                    if (!$etabId) {
-                        return ['id_etablissement' => 'Authenticated user does not have an establishment scope'];
-                    }
-
-                    $exists = Filiere::where('id_etablissement', $etabId)
-                        ->whereRaw('LOWER(nom_filiere) = ?', [strtolower((string) $row['nom_filiere'])])
+                    $exists = Filiere::whereRaw('LOWER(nom_filiere) = ?', [strtolower((string) $row['nom_filiere'])])
                         ->exists();
 
-                    return $exists ? ['nom_filiere' => 'Filiere already exists in this establishment'] : [];
+                    return $exists ? ['nom_filiere' => 'Filiere already exists'] : [];
                 },
                 'create' => function (array $row, Request $request, array &$context): void {
-                    $actor = $request->user();
-                    $etabId = $this->actorEtablissementId($request);
-                    if (!$etabId) {
-                        throw new \RuntimeException('Authenticated user does not have an establishment scope');
-                    }
-
-                    $poleId = null;
-
-                    if ($actor && $actor->role === User::ROLE_CHEF_POLE) {
-                        $chefPoleIds = $this->chefPoleIds($request) ?? [];
-                        $poleId = count($chefPoleIds) > 0 ? (int) $chefPoleIds[0] : null;
-                    }
-
-                    if ($actor && $actor->role === User::ROLE_DIRECTEUR_CMC && $etabId) {
-                        $poleId = Pole::where('id_etablissement', $etabId)
-                            ->orderBy('id')
-                            ->value('id');
-                    }
-
-                    if ($actor && $actor->role === User::ROLE_DIRECTEUR_EFP) {
-                        $poleId = null;
-                    }
-
-                    if ($poleId) {
-                        $poleExists = Pole::where('id', $poleId)
-                            ->where('id_etablissement', $etabId)
-                            ->exists();
-                        if (!$poleExists) {
-                            throw new \RuntimeException('Selected pole does not belong to your establishment');
-                        }
-
-                        $chefPoleIds = $this->chefPoleIds($request);
-                        if ($chefPoleIds !== null && !in_array($poleId, $chefPoleIds, true)) {
-                            throw new \RuntimeException('Unauthorized: this pole does not belong to you');
-                        }
-                    }
-
                     Filiere::create([
-                        'id_etablissement' => $etabId,
+                        'id_secteur' => isset($row['id_secteur']) && $row['id_secteur'] !== '' ? (int) $row['id_secteur'] : null,
                         'nom_filiere' => (string) $row['nom_filiere'],
-                        'id_pole' => $poleId,
+                        'id_pole' => null,
+                    ]);
+                },
+            ],
+            'secteurs' => [
+                'template_headings' => ['nom_secteur'],
+                'template_sample_rows' => [
+                    ['Digital'],
+                ],
+                'rules' => fn (array $row, Request $request): array => [
+                    'nom_secteur' => 'required|string|max:150',
+                ],
+                'duplicate_check' => function (array $row, Request $request, array &$context): array {
+                    $exists = Secteur::whereRaw('LOWER(nom_secteur) = ?', [strtolower((string) $row['nom_secteur'])])
+                        ->exists();
+
+                    return $exists ? ['nom_secteur' => 'Secteur already exists'] : [];
+                },
+                'create' => function (array $row, Request $request, array &$context): void {
+                    Secteur::create([
+                        'nom_secteur' => (string) $row['nom_secteur'],
                     ]);
                 },
             ],

@@ -112,7 +112,7 @@ interface ImportErrorItem {
 }
 
 const props = defineProps<{
-  entity: 'users' | 'salles' | 'filiers' | 'groupes' | 'modules' | 'poles'
+  entity: 'users' | 'salles' | 'filiers' | 'groupes' | 'modules' | 'poles' | 'secteurs'
 }>()
 
 const emit = defineEmits<{
