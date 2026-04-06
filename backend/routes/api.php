@@ -10,6 +10,7 @@ use App\Http\Controllers\LocationsController;
 use App\Http\Controllers\ModuleFormateurController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PolesController;
+use App\Http\Controllers\SecteursController;
 use App\Http\Controllers\SallesController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
@@ -52,20 +53,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('poles/import', [PolesController::class, 'importExcel']);
         Route::get('salles/template', [SallesController::class, 'downloadTemplate']);
         Route::post('salles/import', [SallesController::class, 'importExcel']);
-        Route::get('filiers/template', [FiliersController::class, 'downloadTemplate']);
-        Route::post('filiers/import', [FiliersController::class, 'importExcel']);
-        Route::get('groupes/template', [GroupesController::class, 'downloadTemplate']);
-        Route::post('groupes/import', [GroupesController::class, 'importExcel']);
-        Route::get('modules/template', [ModulesController::class, 'downloadTemplate']);
-        Route::post('modules/import', [ModulesController::class, 'importExcel']);
 
         Route::resource('poles', PolesController::class);
         Route::resource('salles', SallesController::class);
-        Route::resource('filiers', FiliersController::class);
-        Route::resource('groupes', GroupesController::class);
-        Route::resource('modules', ModulesController::class);
+        Route::get('groupes', [GroupesController::class, 'index']);
+        Route::get('filiers', [FiliersController::class, 'index']);
+        Route::get('filiers/{id}', [FiliersController::class, 'show'])->whereNumber('id');
+        Route::get('modules', [ModulesController::class, 'index']);
+        Route::get('modules/{id}', [ModulesController::class, 'show'])->whereNumber('id');
 
-        Route::resource('module-formateur', ModuleFormateurController::class);
+        Route::get('module-formateur', [ModuleFormateurController::class, 'index']);
         Route::get('formateur/{id_formateur}/module-hours', [ModuleFormateurController::class, 'getFormateurModuleHours']);
         Route::get('formateur/{id_formateur}/modules', [ModuleFormateurController::class, 'getFormateurModules']);
         Route::get('module/{id_module}/formateurs', [ModuleFormateurController::class, 'getModuleFormateurs']);
@@ -78,6 +75,53 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('emploi-du-temps/groupe/{id}', [EmploiDuTempsController::class, 'getByGroupe']);
         Route::get('emploi-du-temps/salle/{id}', [EmploiDuTempsController::class, 'getBySalle']);
         Route::resource('emploi-du-temps', EmploiDuTempsController::class);
+    });
+
+    Route::middleware('role:DOSI')->group(function () {
+        Route::get('secteurs/template', [SecteursController::class, 'downloadTemplate']);
+        Route::post('secteurs/import', [SecteursController::class, 'importExcel']);
+        Route::get('secteurs', [SecteursController::class, 'index']);
+        Route::get('secteurs/{id}', [SecteursController::class, 'show'])->whereNumber('id');
+        Route::post('secteurs', [SecteursController::class, 'store']);
+        Route::put('secteurs/{id}', [SecteursController::class, 'update']);
+        Route::patch('secteurs/{id}', [SecteursController::class, 'update']);
+        Route::delete('secteurs/{id}', [SecteursController::class, 'destroy']);
+
+        Route::get('filiers/template', [FiliersController::class, 'downloadTemplate']);
+        Route::post('filiers/import', [FiliersController::class, 'importExcel']);
+        Route::post('filiers', [FiliersController::class, 'store']);
+        Route::put('filiers/{id}', [FiliersController::class, 'update']);
+        Route::patch('filiers/{id}', [FiliersController::class, 'update']);
+        Route::delete('filiers/{id}', [FiliersController::class, 'destroy']);
+
+        Route::get('modules/template', [ModulesController::class, 'downloadTemplate']);
+        Route::post('modules/import', [ModulesController::class, 'importExcel']);
+        Route::post('modules', [ModulesController::class, 'store']);
+        Route::put('modules/{id}', [ModulesController::class, 'update']);
+        Route::patch('modules/{id}', [ModulesController::class, 'update']);
+        Route::delete('modules/{id}', [ModulesController::class, 'destroy']);
+
+    });
+
+    Route::middleware('role:DOSI,DIRECTEUR_CMC,DIRECTEUR_EFP,CHEF_POLE')->group(function () {
+        Route::get('groupes/template', [GroupesController::class, 'downloadTemplate']);
+        Route::post('groupes/import', [GroupesController::class, 'importExcel']);
+        Route::post('groupes', [GroupesController::class, 'store']);
+        Route::put('groupes/{groupe}', [GroupesController::class, 'update']);
+        Route::patch('groupes/{groupe}', [GroupesController::class, 'update']);
+        Route::delete('groupes/{groupe}', [GroupesController::class, 'destroy']);
+    });
+
+    // Module-Formateur affectations (CHEF_POLE and directors can manage)
+    Route::middleware('role:CHEF_POLE,DIRECTEUR_EFP,DIRECTEUR_CMC')->group(function () {
+        Route::get('module-formateur/affectation-form-data', [ModuleFormateurController::class, 'getAffectationFormData']);
+        Route::get('module-formateur/filieres/{id_secteur}', [ModuleFormateurController::class, 'getFilieresBySecteur']);
+        Route::get('module-formateur/modules/{id_filiere}', [ModuleFormateurController::class, 'getModulesByFiliere']);
+        Route::get('module-formateur/groupes/{id_filiere}', [ModuleFormateurController::class, 'getGroupesByFiliere']);
+        Route::post('module-formateur', [ModuleFormateurController::class, 'store']);
+        Route::put('module-formateur/{module_formateur}', [ModuleFormateurController::class, 'update']);
+        Route::patch('module-formateur/{module_formateur}', [ModuleFormateurController::class, 'update']);
+        Route::delete('module-formateur/{module_formateur}', [ModuleFormateurController::class, 'destroy']);
     });
 
     Route::middleware('role:CHEF_POLE')->group(function () {
