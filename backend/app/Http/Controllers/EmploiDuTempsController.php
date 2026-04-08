@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmploiDuTemps;
+use App\Models\FiliereModulePhase;
 use App\Models\Formateur;
 use App\Models\Groupe;
 use App\Models\ModuleGroupeFormateur;
@@ -33,6 +34,17 @@ class EmploiDuTempsController extends Controller
     ];
 
     private const PDF_DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+
+    private const SMART_SLOT_WINDOWS = [
+        ['08:30', '11:00'],
+        ['11:00', '13:30'],
+        ['13:30', '16:00'],
+        ['16:00', '18:30'],
+    ];
+
+    private const SMART_MAX_FORMATEUR_DAILY_MINUTES = 300;
+
+    private const SMART_MAX_GROUPE_DAILY_MINUTES = 300;
 
     private function resolveWeekRange(string $startDate): array
     {
@@ -367,6 +379,591 @@ class EmploiDuTempsController extends Controller
         }
 
         return null;
+    }
+
+    private function buildPhaseRankByModule(Collection $assignments): array
+    {
+        $filiereIds = $assignments
+            ->map(fn ($a) => (int) ($a->module?->id_filiere ?? 0))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($filiereIds->isEmpty()) {
+            return [];
+        }
+
+        $rowsByFiliere = FiliereModulePhase::query()
+            ->whereIn('id_filiere', $filiereIds->all())
+            ->get(['id_filiere', 'id_module', 'id_previous_module'])
+            ->groupBy('id_filiere');
+
+        $phaseByModule = [];
+
+        foreach ($rowsByFiliere as $filiereRows) {
+            $previousByModule = [];
+            foreach ($filiereRows as $row) {
+                $previousByModule[(int) $row->id_module] = $row->id_previous_module ? (int) $row->id_previous_module : null;
+            }
+
+            $resolver = function (int $moduleId, array &$cache, array $path) use (&$resolver, $previousByModule): int {
+                if (isset($cache[$moduleId])) {
+                    return $cache[$moduleId];
+                }
+
+                if (in_array($moduleId, $path, true)) {
+                    $cache[$moduleId] = 1;
+                    return 1;
+                }
+
+                $previous = $previousByModule[$moduleId] ?? null;
+                if (!$previous) {
+                    $cache[$moduleId] = 1;
+                    return 1;
+                }
+
+                $path[] = $moduleId;
+                $cache[$moduleId] = $resolver((int) $previous, $cache, $path) + 1;
+                return $cache[$moduleId];
+            };
+
+            $cache = [];
+            foreach ($previousByModule as $moduleId => $_) {
+                $phaseByModule[(int) $moduleId] = $resolver((int) $moduleId, $cache, []);
+            }
+        }
+
+        return $phaseByModule;
+    }
+
+    private function intervalOverlap(int $startA, int $endA, int $startB, int $endB): bool
+    {
+        return $startA < $endB && $endA > $startB;
+    }
+
+    private function appendOccupancy(array &$occupancy, string $date, int $startMin, int $endMin, int $groupeId, int $formateurId, int $salleId): void
+    {
+        if (!isset($occupancy[$date])) {
+            $occupancy[$date] = [
+                'groupes' => [],
+                'formateurs' => [],
+                'salles' => [],
+            ];
+        }
+
+        $occupancy[$date]['groupes'][$groupeId][] = [$startMin, $endMin];
+        $occupancy[$date]['formateurs'][$formateurId][] = [$startMin, $endMin];
+        $occupancy[$date]['salles'][$salleId][] = [$startMin, $endMin];
+    }
+
+    private function hasEntityConflict(array $occupancy, string $date, string $entity, int $entityId, int $startMin, int $endMin): bool
+    {
+        $intervals = $occupancy[$date][$entity][$entityId] ?? [];
+        foreach ($intervals as $interval) {
+            $busyStart = (int) ($interval[0] ?? 0);
+            $busyEnd = (int) ($interval[1] ?? 0);
+            if ($this->intervalOverlap($startMin, $endMin, $busyStart, $busyEnd)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function generateWeeklySmart(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'target_type' => 'required|in:formateur,groupe',
+            'target_id' => 'required|integer|min:1',
+        ]);
+
+        $user = $request->user();
+        $targetType = (string) $data['target_type'];
+        $targetId = (int) $data['target_id'];
+        [$monday, $saturday] = $this->resolveWeekRange($data['start_date']);
+
+        $assignmentsQuery = ModuleGroupeFormateur::query()
+            ->with(['module', 'groupe', 'formateur'])
+            ->where($targetType === 'formateur' ? 'id_formateur' : 'id_groupe', $targetId);
+
+        if (Schema::hasColumn('module_groupe_formateur', 'id_etablissement') && $user?->id_etablissement) {
+            $assignmentsQuery->where('id_etablissement', $user->id_etablissement);
+        }
+
+        if (($user?->role ?? null) === 'CHEF_POLE') {
+            $chefPoleIds = $this->getChefPoleIds($user);
+            if ($chefPoleIds === null || $chefPoleIds->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun pole associe a votre compte chef de pole.',
+                ], 403);
+            }
+
+            $assignmentsQuery
+                ->whereHas('module.filiere', function ($q) use ($chefPoleIds) {
+                    $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                        $scopeQuery->whereIn('id_pole', $chefPoleIds)->orWhereNull('id_pole');
+                    });
+                })
+                ->whereHas('groupe.filiere', function ($q) use ($chefPoleIds) {
+                    $q->where(function ($scopeQuery) use ($chefPoleIds) {
+                        $scopeQuery->whereIn('id_pole', $chefPoleIds)->orWhereNull('id_pole');
+                    });
+                });
+        }
+
+        $assignments = $assignmentsQuery->get();
+
+        if ($assignments->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune affectation trouvee pour la cible selectionnee.',
+            ], 404);
+        }
+
+        $assignmentIds = $assignments->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $existingByAssignment = EmploiDuTemps::query()
+            ->whereIn('id_module_groupe_formateur', $assignmentIds)
+            ->get(['id_module_groupe_formateur', 'heure_debut', 'heure_fin']);
+
+        $plannedMinutesByAssignment = [];
+        foreach ($existingByAssignment as $entry) {
+            $duration = max(0, $this->toMinutes((string) $entry->heure_fin) - $this->toMinutes((string) $entry->heure_debut));
+            $assignmentId = (int) $entry->id_module_groupe_formateur;
+            $plannedMinutesByAssignment[$assignmentId] = (int) ($plannedMinutesByAssignment[$assignmentId] ?? 0) + $duration;
+        }
+
+        $phaseByModule = $this->buildPhaseRankByModule($assignments);
+
+        $candidatePool = $assignments
+            ->map(function ($assignment) use ($plannedMinutesByAssignment, $phaseByModule) {
+                $assignmentId = (int) $assignment->id;
+                $moduleMinutes = (int) round(((float) ($assignment->module?->volume_horaire ?? 0)) * 60);
+                $alreadyPlanned = (int) ($plannedMinutesByAssignment[$assignmentId] ?? 0);
+                $remainingMinutes = max(0, $moduleMinutes - $alreadyPlanned);
+
+                return [
+                    'assignment' => $assignment,
+                    'assignment_id' => $assignmentId,
+                    'phase' => (int) ($phaseByModule[(int) $assignment->id_module] ?? 1),
+                    'remaining_minutes' => $remainingMinutes,
+                    'scheduled_minutes_this_run' => 0,
+                ];
+            })
+            ->filter(fn ($row) => (int) $row['remaining_minutes'] > 0)
+            ->values();
+
+        if ($candidatePool->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tous les modules de la cible sont deja planifies.',
+                'generated_count' => 0,
+                'data' => [],
+            ]);
+        }
+
+        $sallesQuery = Salle::query();
+
+        if (($user?->role ?? null) === 'CHEF_POLE') {
+            $chefPoleIds = $this->getChefPoleIds($user);
+            $sallesQuery->whereIn('id_pole', $chefPoleIds ?? []);
+        } elseif (($user?->role ?? null) === 'DIRECTEUR_EFP' && $user?->id_etablissement) {
+            $sallesQuery->where('id_etablissement', $user->id_etablissement);
+        }
+
+        $salles = $sallesQuery->get(['id', 'nom_salle']);
+
+        if ($salles->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune salle disponible dans votre perimetre.',
+            ], 422);
+        }
+
+        $existingWeekSessions = EmploiDuTemps::query()
+            ->whereBetween('date_seance', [$monday->format('Y-m-d'), $saturday->format('Y-m-d')])
+            ->with(['moduleGroupeFormateur'])
+            ->get();
+
+        $occupancy = [];
+        $targetBusySlots = [];
+        $formateurDailyUsedMinutes = [];
+        $groupeDailyUsedMinutes = [];
+
+        foreach ($existingWeekSessions as $session) {
+            if (!$session->moduleGroupeFormateur) {
+                continue;
+            }
+
+            $sessionDate = (string) $session->date_seance;
+            $startMin = $this->toMinutes((string) $session->heure_debut);
+            $endMin = $this->toMinutes((string) $session->heure_fin);
+            $groupeId = (int) $session->moduleGroupeFormateur->id_groupe;
+            $formateurId = (int) $session->moduleGroupeFormateur->id_formateur;
+            $salleId = (int) $session->id_salle;
+
+            $this->appendOccupancy($occupancy, $sessionDate, $startMin, $endMin, $groupeId, $formateurId, $salleId);
+
+            if (!isset($formateurDailyUsedMinutes[$sessionDate])) {
+                $formateurDailyUsedMinutes[$sessionDate] = [];
+            }
+            if (!isset($groupeDailyUsedMinutes[$sessionDate])) {
+                $groupeDailyUsedMinutes[$sessionDate] = [];
+            }
+
+            $durationMinutes = max(0, $endMin - $startMin);
+            $formateurDailyUsedMinutes[$sessionDate][$formateurId] = (int) ($formateurDailyUsedMinutes[$sessionDate][$formateurId] ?? 0) + $durationMinutes;
+            $groupeDailyUsedMinutes[$sessionDate][$groupeId] = (int) ($groupeDailyUsedMinutes[$sessionDate][$groupeId] ?? 0) + $durationMinutes;
+
+            if ($targetType === 'formateur' && $formateurId === $targetId) {
+                $targetBusySlots[$sessionDate][] = [$startMin, $endMin];
+            }
+            if ($targetType === 'groupe' && $groupeId === $targetId) {
+                $targetBusySlots[$sessionDate][] = [$startMin, $endMin];
+            }
+        }
+
+        $assignmentById = [];
+        foreach ($candidatePool as $row) {
+            $assignmentById[(int) $row['assignment_id']] = $row;
+        }
+
+        $formateurWeekRemaining = [];
+        $formateurIds = $assignments->pluck('id_formateur')->map(fn ($id) => (int) $id)->unique()->values();
+        $formateurs = Formateur::query()->whereIn('id', $formateurIds->all())->get(['id', 'MHS']);
+
+        foreach ($formateurs as $formateur) {
+            $mhs = is_numeric($formateur->MHS) ? (float) $formateur->MHS : 0.0;
+            if ($mhs <= 0) {
+                $formateurWeekRemaining[(int) $formateur->id] = PHP_INT_MAX;
+                continue;
+            }
+
+            $alreadyPlannedMinutes = EmploiDuTemps::query()
+                ->whereBetween('date_seance', [$monday->format('Y-m-d'), $saturday->format('Y-m-d')])
+                ->whereHas('moduleGroupeFormateur', function ($q) use ($formateur) {
+                    $q->where('id_formateur', (int) $formateur->id);
+                })
+                ->get(['heure_debut', 'heure_fin'])
+                ->reduce(function ($carry, $session) {
+                    return $carry + max(0, $this->toMinutes((string) $session->heure_fin) - $this->toMinutes((string) $session->heure_debut));
+                }, 0);
+
+            $formateurWeekRemaining[(int) $formateur->id] = max(0, (int) round($mhs * 60) - (int) $alreadyPlannedMinutes);
+        }
+
+        $today = Carbon::today();
+        $generated = [];
+        $lastGeneratedByAssignmentDate = [];
+        $skippedPastDays = 0;
+
+        for ($dayCursor = $monday->copy(); $dayCursor->lte($saturday); $dayCursor->addDay()) {
+            if ($dayCursor->isSunday()) {
+                continue;
+            }
+
+            if ($dayCursor->lt($today)) {
+                $skippedPastDays += 1;
+                continue;
+            }
+
+            $dateStr = $dayCursor->format('Y-m-d');
+            $targetIntervals = $targetBusySlots[$dateStr] ?? [];
+
+            foreach (self::SMART_SLOT_WINDOWS as $slotWindow) {
+                $slotStartMin = $this->toMinutes($slotWindow[0]);
+                $slotEndMin = $this->toMinutes($slotWindow[1]);
+
+                $targetSlotTaken = false;
+                foreach ($targetIntervals as $targetInterval) {
+                    $busyStart = (int) ($targetInterval[0] ?? 0);
+                    $busyEnd = (int) ($targetInterval[1] ?? 0);
+                    if ($this->intervalOverlap($slotStartMin, $slotEndMin, $busyStart, $busyEnd)) {
+                        $targetSlotTaken = true;
+                        break;
+                    }
+                }
+
+                if ($targetSlotTaken) {
+                    continue;
+                }
+
+                uasort($assignmentById, function ($a, $b) {
+                    $phaseCmp = ((int) $a['phase']) <=> ((int) $b['phase']);
+                    if ($phaseCmp !== 0) {
+                        return $phaseCmp;
+                    }
+
+                    $remainingCmp = ((int) $b['remaining_minutes']) <=> ((int) $a['remaining_minutes']);
+                    if ($remainingCmp !== 0) {
+                        return $remainingCmp;
+                    }
+
+                    return ((int) $a['scheduled_minutes_this_run']) <=> ((int) $b['scheduled_minutes_this_run']);
+                });
+
+                $chosen = null;
+                $chosenSalleId = null;
+                $chosenStart = $slotStartMin;
+                $chosenEnd = null;
+                $chosenCandidateId = null;
+
+                $preferredCandidateId = null;
+                $preferredKey = null;
+                foreach ($assignmentById as $candidateId => $candidateRow) {
+                    $candidateMergeKey = $dateStr . '|' . (int) $candidateId;
+                    $lastGenerated = $lastGeneratedByAssignmentDate[$candidateMergeKey] ?? null;
+                    if ($lastGenerated && (int) ($lastGenerated['end'] ?? -1) === $slotStartMin) {
+                        $preferredCandidateId = (int) $candidateId;
+                        $preferredKey = $candidateMergeKey;
+                        break;
+                    }
+                }
+
+                if ($preferredCandidateId !== null && isset($assignmentById[$preferredCandidateId])) {
+                    $candidate = $assignmentById[$preferredCandidateId];
+                    $assignment = $candidate['assignment'];
+                    $groupeId = (int) $assignment->id_groupe;
+                    $formateurId = (int) $assignment->id_formateur;
+                    $remainingMinutes = (int) $candidate['remaining_minutes'];
+                    $formateurRemaining = (int) ($formateurWeekRemaining[$formateurId] ?? PHP_INT_MAX);
+                    $formateurDailyUsed = (int) ($formateurDailyUsedMinutes[$dateStr][$formateurId] ?? 0);
+                    $groupeDailyUsed = (int) ($groupeDailyUsedMinutes[$dateStr][$groupeId] ?? 0);
+                    $formateurDailyRemaining = max(0, self::SMART_MAX_FORMATEUR_DAILY_MINUTES - $formateurDailyUsed);
+                    $groupeDailyRemaining = max(0, self::SMART_MAX_GROUPE_DAILY_MINUTES - $groupeDailyUsed);
+                    $slotCapacity = $slotEndMin - $slotStartMin;
+                    $duration = min($slotCapacity, $remainingMinutes, $formateurRemaining, $formateurDailyRemaining, $groupeDailyRemaining);
+
+                    if ($duration >= 60) {
+                        $candidateEnd = $slotStartMin + $duration;
+                        if (
+                            !$this->hasEntityConflict($occupancy, $dateStr, 'groupes', $groupeId, $slotStartMin, $candidateEnd)
+                            && !$this->hasEntityConflict($occupancy, $dateStr, 'formateurs', $formateurId, $slotStartMin, $candidateEnd)
+                        ) {
+                            $availableSalleId = null;
+                            $lastGenerated = $lastGeneratedByAssignmentDate[$preferredKey] ?? null;
+                            $preferredSalleId = (int) ($lastGenerated['salle_id'] ?? 0);
+
+                            if ($preferredSalleId && !$this->hasEntityConflict($occupancy, $dateStr, 'salles', $preferredSalleId, $slotStartMin, $candidateEnd)) {
+                                $availableSalleId = $preferredSalleId;
+                            }
+
+                            if ($availableSalleId === null) {
+                                foreach ($salles as $salle) {
+                                    $salleId = (int) $salle->id;
+                                    if ($this->hasEntityConflict($occupancy, $dateStr, 'salles', $salleId, $slotStartMin, $candidateEnd)) {
+                                        continue;
+                                    }
+
+                                    $availableSalleId = $salleId;
+                                    break;
+                                }
+                            }
+
+                            if ($availableSalleId !== null) {
+                                $chosen = $candidate;
+                                $chosenSalleId = $availableSalleId;
+                                $chosenEnd = $candidateEnd;
+                                $chosenCandidateId = $preferredCandidateId;
+                            }
+                        }
+                    }
+                }
+
+                foreach ($assignmentById as $candidateId => $candidate) {
+                    if ($chosenCandidateId !== null && $chosenCandidateId === (int) $candidateId) {
+                        continue;
+                    }
+
+                    $assignment = $candidate['assignment'];
+                    $groupeId = (int) $assignment->id_groupe;
+                    $formateurId = (int) $assignment->id_formateur;
+
+                    $remainingMinutes = (int) $candidate['remaining_minutes'];
+                    if ($remainingMinutes <= 0) {
+                        continue;
+                    }
+
+                    $formateurRemaining = (int) ($formateurWeekRemaining[$formateurId] ?? PHP_INT_MAX);
+                    if ($formateurRemaining <= 0) {
+                        continue;
+                    }
+
+                    $formateurDailyUsed = (int) ($formateurDailyUsedMinutes[$dateStr][$formateurId] ?? 0);
+                    $groupeDailyUsed = (int) ($groupeDailyUsedMinutes[$dateStr][$groupeId] ?? 0);
+                    $formateurDailyRemaining = max(0, self::SMART_MAX_FORMATEUR_DAILY_MINUTES - $formateurDailyUsed);
+                    $groupeDailyRemaining = max(0, self::SMART_MAX_GROUPE_DAILY_MINUTES - $groupeDailyUsed);
+
+                    if ($formateurDailyRemaining <= 0 || $groupeDailyRemaining <= 0) {
+                        continue;
+                    }
+
+                    $slotCapacity = $slotEndMin - $slotStartMin;
+                    $duration = min($slotCapacity, $remainingMinutes, $formateurRemaining, $formateurDailyRemaining, $groupeDailyRemaining);
+                    if ($duration < 60) {
+                        continue;
+                    }
+
+                    $candidateEnd = $slotStartMin + $duration;
+
+                    if ($this->hasEntityConflict($occupancy, $dateStr, 'groupes', $groupeId, $slotStartMin, $candidateEnd)) {
+                        continue;
+                    }
+
+                    if ($this->hasEntityConflict($occupancy, $dateStr, 'formateurs', $formateurId, $slotStartMin, $candidateEnd)) {
+                        continue;
+                    }
+
+                    $availableSalleId = null;
+                    $preferredSalleId = null;
+                    $mergeKey = $dateStr . '|' . (int) $candidate['assignment_id'];
+                    $lastGenerated = $lastGeneratedByAssignmentDate[$mergeKey] ?? null;
+                    if ($lastGenerated && (int) ($lastGenerated['end'] ?? -1) === $slotStartMin) {
+                        $preferredSalleId = (int) ($lastGenerated['salle_id'] ?? 0);
+                    }
+
+                    if ($preferredSalleId) {
+                        if (!$this->hasEntityConflict($occupancy, $dateStr, 'salles', $preferredSalleId, $slotStartMin, $candidateEnd)) {
+                            $availableSalleId = $preferredSalleId;
+                        }
+                    }
+
+                    if ($availableSalleId === null) {
+                        foreach ($salles as $salle) {
+                            $salleId = (int) $salle->id;
+                            if ($this->hasEntityConflict($occupancy, $dateStr, 'salles', $salleId, $slotStartMin, $candidateEnd)) {
+                                continue;
+                            }
+
+                            $availableSalleId = $salleId;
+                            break;
+                        }
+                    }
+
+                    if ($availableSalleId === null) {
+                        continue;
+                    }
+
+                    $chosen = $candidate;
+                    $chosenSalleId = $availableSalleId;
+                    $chosenEnd = $candidateEnd;
+                    $chosenCandidateId = (int) $candidate['assignment_id'];
+                    break;
+                }
+
+                if (!$chosen || !$chosenSalleId || $chosenEnd === null || $chosenCandidateId === null) {
+                    continue;
+                }
+
+                /** @var ModuleGroupeFormateur $chosenAssignment */
+                $chosenAssignment = $chosen['assignment'];
+                $duration = $chosenEnd - $chosenStart;
+                $candidateId = $chosenCandidateId;
+                $assignmentById[$candidateId]['remaining_minutes'] = max(0, (int) $assignmentById[$candidateId]['remaining_minutes'] - $duration);
+                $assignmentById[$candidateId]['scheduled_minutes_this_run'] = (int) $assignmentById[$candidateId]['scheduled_minutes_this_run'] + $duration;
+
+                $formateurId = (int) $chosenAssignment->id_formateur;
+                $groupeId = (int) $chosenAssignment->id_groupe;
+                if (($formateurWeekRemaining[$formateurId] ?? PHP_INT_MAX) !== PHP_INT_MAX) {
+                    $formateurWeekRemaining[$formateurId] = max(0, (int) $formateurWeekRemaining[$formateurId] - $duration);
+                }
+
+                if (!isset($formateurDailyUsedMinutes[$dateStr])) {
+                    $formateurDailyUsedMinutes[$dateStr] = [];
+                }
+                if (!isset($groupeDailyUsedMinutes[$dateStr])) {
+                    $groupeDailyUsedMinutes[$dateStr] = [];
+                }
+                $formateurDailyUsedMinutes[$dateStr][$formateurId] = (int) ($formateurDailyUsedMinutes[$dateStr][$formateurId] ?? 0) + $duration;
+                $groupeDailyUsedMinutes[$dateStr][$groupeId] = (int) ($groupeDailyUsedMinutes[$dateStr][$groupeId] ?? 0) + $duration;
+
+                $this->appendOccupancy(
+                    $occupancy,
+                    $dateStr,
+                    $chosenStart,
+                    $chosenEnd,
+                    $groupeId,
+                    $formateurId,
+                    (int) $chosenSalleId
+                );
+
+                $targetBusySlots[$dateStr][] = [$chosenStart, $chosenEnd];
+                $targetIntervals[] = [$chosenStart, $chosenEnd];
+
+                $mergeKey = $dateStr . '|' . $candidateId;
+                $lastGenerated = $lastGeneratedByAssignmentDate[$mergeKey] ?? null;
+
+                if (
+                    $lastGenerated
+                    && (int) ($lastGenerated['end'] ?? -1) === $chosenStart
+                    && (int) ($lastGenerated['salle_id'] ?? 0) === (int) $chosenSalleId
+                ) {
+                    /** @var EmploiDuTemps $lastModel */
+                    $lastModel = $lastGenerated['model'];
+                    $lastModel->heure_fin = $this->minutesToHHMM($chosenEnd);
+                    $lastModel->save();
+
+                    $generatedIndex = (int) ($lastGenerated['generated_index'] ?? -1);
+                    if ($generatedIndex >= 0 && isset($generated[$generatedIndex])) {
+                        $generated[$generatedIndex]['heure_fin'] = $this->minutesToHHMM($chosenEnd);
+                    }
+
+                    $lastGeneratedByAssignmentDate[$mergeKey]['end'] = $chosenEnd;
+                    $lastGeneratedByAssignmentDate[$mergeKey]['model'] = $lastModel;
+                } else {
+                    $created = EmploiDuTemps::query()->create([
+                        'date_seance' => $dateStr,
+                        'heure_debut' => $this->minutesToHHMM($chosenStart),
+                        'heure_fin' => $this->minutesToHHMM($chosenEnd),
+                        'id_module_groupe_formateur' => (int) $chosenAssignment->id,
+                        'id_module' => (int) $chosenAssignment->id_module,
+                        'id_salle' => (int) $chosenSalleId,
+                    ]);
+
+                    $generated[] = [
+                        'id' => (int) $created->id,
+                        'date_seance' => $dateStr,
+                        'heure_debut' => $this->minutesToHHMM($chosenStart),
+                        'heure_fin' => $this->minutesToHHMM($chosenEnd),
+                        'id_module_groupe_formateur' => (int) $chosenAssignment->id,
+                        'id_module' => (int) $chosenAssignment->id_module,
+                        'id_groupe' => (int) $chosenAssignment->id_groupe,
+                        'id_formateur' => (int) $chosenAssignment->id_formateur,
+                        'id_salle' => (int) $chosenSalleId,
+                    ];
+
+                    $lastGeneratedByAssignmentDate[$mergeKey] = [
+                        'end' => $chosenEnd,
+                        'salle_id' => (int) $chosenSalleId,
+                        'model' => $created,
+                        'generated_index' => count($generated) - 1,
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($generated) > 0
+                ? 'Generation intelligente terminee.'
+                : 'Aucun nouveau creneau viable trouve pour cette semaine.',
+            'generated_count' => count($generated),
+            'skipped_past_days' => $skippedPastDays,
+            'week' => [
+                'start' => $monday->format('Y-m-d'),
+                'end' => $saturday->format('Y-m-d'),
+            ],
+            'data' => $generated,
+        ]);
+    }
+
+    private function minutesToHHMM(int $totalMinutes): string
+    {
+        $hours = intdiv($totalMinutes, 60);
+        $minutes = $totalMinutes % 60;
+
+        return sprintf('%02d:%02d', $hours, $minutes);
     }
 
     public function index(Request $request)
