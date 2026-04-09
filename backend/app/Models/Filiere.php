@@ -31,6 +31,11 @@ class Filiere extends Model
         return $this->hasMany(Module::class, 'id_filiere');
     }
 
+    public function modulePhases()
+    {
+        return $this->hasMany(FiliereModulePhase::class, 'id_filiere');
+    }
+
     public function etablissement()
     {
         return $this->belongsTo(Etablissement::class, 'id_etablissement');
