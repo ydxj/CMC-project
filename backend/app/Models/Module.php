@@ -25,4 +25,9 @@ class Module extends Model
     {
         return $this->hasMany(ModuleGroupeFormateur::class, 'id_module');
     }
+
+    public function filierePhaseRows()
+    {
+        return $this->hasMany(FiliereModulePhase::class, 'id_module');
+    }
 }
