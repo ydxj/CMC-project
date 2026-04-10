@@ -107,6 +107,13 @@
                   <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{{ filiere.secteur?.nom_secteur || '-' }}</td>
                   <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-3">
+                      <button
+                        @click="openPhasesModal(filiere)"
+                        class="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                        title="Planifier les phases de modules"
+                      >
+                        Modules
+                      </button>
                       <button @click="openEditModal(filiere)" class="text-slate-500 hover:text-green-600" title="Modifier">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -265,6 +272,157 @@
             </form>
           </div>
         </Transition>
+      </div>
+    </Transition>
+
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showPhasesModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[1px]"
+        @click.self="closePhasesModal"
+      >
+        <div class="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-xl bg-white shadow-xl">
+          <div class="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+            <div>
+              <h3 class="text-lg font-semibold text-slate-900">Plan des phases modules</h3>
+              <p class="text-sm text-slate-600">{{ phasesModalTitle }}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                @click="addPhase"
+                class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Ajouter phase
+              </button>
+              <button
+                type="button"
+                @click="saveModulePhases"
+                :disabled="phasesSaving || phasesLoading || !selectedPhaseFiliere"
+                class="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span v-if="phasesSaving">Enregistrement...</span>
+                <span v-else>Enregistrer</span>
+              </button>
+              <button
+                type="button"
+                @click="closePhasesModal"
+                class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+
+          <div class="grid max-h-[calc(92vh-72px)] grid-cols-1 gap-0 overflow-y-auto lg:grid-cols-12">
+            <section class="border-b border-slate-200 p-5 lg:col-span-4 lg:border-b-0 lg:border-r">
+              <h4 class="text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">Modules de la filiere</h4>
+              <p class="mt-1 text-xs text-slate-500">Glissez un module dans une phase.</p>
+
+              <div v-if="phasesLoading" class="mt-4 rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
+                Chargement des modules...
+              </div>
+
+              <div v-else class="mt-4 space-y-2">
+                <div
+                  class="min-h-[120px] rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3"
+                  @dragover.prevent
+                  @drop="onDropToPool"
+                >
+                  <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Non assignes</p>
+                  <div v-if="unassignedModules.length === 0" class="text-sm text-slate-500">Tous les modules sont deja planifies.</div>
+                  <div v-else class="space-y-2">
+                    <div
+                      v-for="moduleItem in unassignedModules"
+                      :key="`pool-${moduleItem.id}`"
+                      draggable="true"
+                      class="cursor-move rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm"
+                      @dragstart="onDragStart(moduleItem.id)"
+                    >
+                      <p class="font-medium text-slate-900">{{ moduleItem.nom_module }}</p>
+                      <p class="text-xs text-slate-500">{{ moduleItem.volume_horaire }} h</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="p-5 lg:col-span-8">
+              <p class="mb-3 text-xs text-slate-600">
+                La phase N+1 ne peut demarrer qu'apres la phase N. Vous pouvez mettre plusieurs modules dans la meme phase.
+              </p>
+
+              <div v-if="phasesError" class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ phasesError }}
+              </div>
+              <div v-if="phasesSuccess" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {{ phasesSuccess }}
+              </div>
+
+              <div class="space-y-4">
+                <div
+                  v-for="(phase, phaseIndex) in phaseRows"
+                  :key="`phase-${phase.phase_number}`"
+                  class="rounded-lg border border-slate-200"
+                >
+                  <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2">
+                    <p class="text-sm font-semibold text-slate-800">Phase {{ phase.phase_number }}</p>
+                    <button
+                      v-if="phaseRows.length > 1"
+                      type="button"
+                      class="text-xs font-semibold text-red-600 hover:text-red-700"
+                      @click="removePhase(phaseIndex)"
+                    >
+                      Supprimer phase
+                    </button>
+                  </div>
+
+                  <div class="min-h-[90px] space-y-2 p-3" @dragover.prevent @drop="onDropToPhase(phase.phase_number)">
+                    <div v-if="phase.modules.length === 0" class="rounded-md border border-dashed border-slate-300 p-3 text-sm text-slate-500">
+                      Deposez des modules ici
+                    </div>
+
+                    <div
+                      v-for="moduleItem in phase.modules"
+                      :key="`phase-${phase.phase_number}-module-${moduleItem.id}`"
+                      draggable="true"
+                      class="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm"
+                      @dragstart="onDragStart(moduleItem.id)"
+                    >
+                      <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p class="cursor-move text-sm font-medium text-slate-900">{{ moduleItem.nom_module }}</p>
+                          <p class="text-xs text-slate-500">{{ moduleItem.volume_horaire }} h</p>
+                        </div>
+
+                        <select
+                          v-model="moduleItem.id_previous_module"
+                          class="w-[220px] rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                        >
+                          <option :value="null">Aucun module precedent</option>
+                          <option
+                            v-for="previous in previousModuleOptions(phase.phase_number, moduleItem.id)"
+                            :key="`previous-${moduleItem.id}-${previous.id}`"
+                            :value="previous.id"
+                          >
+                            {{ previous.nom_module }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </Transition>
 
@@ -447,6 +605,28 @@ interface Filiere {
   pole?: Pole
 }
 
+interface FiliereModule {
+  id: number
+  nom_module: string
+  volume_horaire: number
+  id_filiere?: number
+  id_previous_module?: number | null
+}
+
+interface ModulePhaseRow {
+  phase_number: number
+  modules: FiliereModule[]
+}
+
+interface ModulePhasesResponse {
+  filiere: {
+    id: number
+    nom_filiere: string
+  }
+  modules: FiliereModule[]
+  phases: ModulePhaseRow[]
+}
+
 const router = useRouter()
 const api = useApi()
 const authStore = useAuthStore()
@@ -461,6 +641,16 @@ const totalItems = ref(0)
 const totalPages = ref(1)
 const currentPage = ref(1)
 const PER_PAGE = 10
+
+const showPhasesModal = ref(false)
+const phasesLoading = ref(false)
+const phasesSaving = ref(false)
+const phasesError = ref<string | null>(null)
+const phasesSuccess = ref<string | null>(null)
+const selectedPhaseFiliere = ref<Filiere | null>(null)
+const allFiliereModules = ref<FiliereModule[]>([])
+const phaseRows = ref<ModulePhaseRow[]>([])
+const draggedModuleId = ref<number | null>(null)
 
 interface FilieresPaginatedResponse {
   data: Filiere[]
@@ -545,6 +735,40 @@ const visiblePages = computed(() => {
   return pages
 })
 
+const phasesModalTitle = computed(() => {
+  if (!selectedPhaseFiliere.value) return 'Selectionnez une filiere'
+  return `Filiere: ${selectedPhaseFiliere.value.nom_filiere}`
+})
+
+const assignedModuleIds = computed(() => {
+  const ids = new Set<number>()
+  phaseRows.value.forEach((phase) => {
+    phase.modules.forEach((moduleItem) => {
+      ids.add(moduleItem.id)
+    })
+  })
+  return ids
+})
+
+const unassignedModules = computed(() => {
+  return allFiliereModules.value.filter((moduleItem) => !assignedModuleIds.value.has(moduleItem.id))
+})
+
+const previousModuleOptions = (phaseNumber: number, currentModuleId: number): FiliereModule[] => {
+  const options: FiliereModule[] = []
+
+  phaseRows.value.forEach((phase) => {
+    if (phase.phase_number >= phaseNumber) return
+    phase.modules.forEach((moduleItem) => {
+      if (moduleItem.id !== currentModuleId) {
+        options.push(moduleItem)
+      }
+    })
+  })
+
+  return options
+}
+
 const applyPaginationFromResponse = (response: FilieresPaginatedResponse, fallbackPage: number) => {
   filieres.value = response.data || []
   totalItems.value = Number(response.total) || 0
@@ -627,6 +851,160 @@ const closeEditModal = () => {
   showEditModal.value = false
   editError.value = null
   editSuccess.value = null
+}
+
+const normalizePhaseRows = (rows: ModulePhaseRow[]): ModulePhaseRow[] => {
+  const ordered = [...rows].sort((a, b) => a.phase_number - b.phase_number)
+  return ordered.map((phase, index) => ({
+    phase_number: index + 1,
+    modules: phase.modules.map((moduleItem) => ({
+      ...moduleItem,
+      id_previous_module: moduleItem.id_previous_module ?? null,
+    })),
+  }))
+}
+
+const openPhasesModal = async (filiere: Filiere) => {
+  selectedPhaseFiliere.value = filiere
+  phasesError.value = null
+  phasesSuccess.value = null
+  showPhasesModal.value = true
+  phasesLoading.value = true
+
+  try {
+    const response = await api.get<ModulePhasesResponse>(`/filiers/${filiere.id}/module-phases`)
+    allFiliereModules.value = Array.isArray(response.modules) ? response.modules : []
+    phaseRows.value = normalizePhaseRows(Array.isArray(response.phases) ? response.phases : [])
+
+    if (phaseRows.value.length === 0) {
+      phaseRows.value = [{ phase_number: 1, modules: [] }]
+    }
+  } catch (err: any) {
+    phasesError.value = err?.data?.message || err?.message || 'Erreur lors du chargement du plan des modules'
+    allFiliereModules.value = []
+    phaseRows.value = [{ phase_number: 1, modules: [] }]
+  } finally {
+    phasesLoading.value = false
+  }
+}
+
+const closePhasesModal = () => {
+  showPhasesModal.value = false
+  phasesError.value = null
+  phasesSuccess.value = null
+  selectedPhaseFiliere.value = null
+  allFiliereModules.value = []
+  phaseRows.value = []
+  draggedModuleId.value = null
+}
+
+const addPhase = () => {
+  const next = phaseRows.value.length + 1
+  phaseRows.value.push({ phase_number: next, modules: [] })
+}
+
+const removePhase = (phaseIndex: number) => {
+  phaseRows.value.splice(phaseIndex, 1)
+  phaseRows.value = normalizePhaseRows(phaseRows.value)
+
+  if (phaseRows.value.length === 0) {
+    phaseRows.value = [{ phase_number: 1, modules: [] }]
+  }
+}
+
+const findAndDetachModule = (moduleId: number): FiliereModule | null => {
+  const poolModule = allFiliereModules.value.find((item) => item.id === moduleId)
+  if (!poolModule) return null
+
+  for (const phase of phaseRows.value) {
+    const index = phase.modules.findIndex((item) => item.id === moduleId)
+    if (index !== -1) {
+      const [moduleItem] = phase.modules.splice(index, 1)
+      moduleItem.id_previous_module = null
+      return moduleItem
+    }
+  }
+
+  return {
+    ...poolModule,
+    id_previous_module: null,
+  }
+}
+
+const onDragStart = (moduleId: number) => {
+  draggedModuleId.value = moduleId
+}
+
+const onDropToPhase = (phaseNumber: number) => {
+  if (!draggedModuleId.value) return
+
+  const moduleItem = findAndDetachModule(draggedModuleId.value)
+  draggedModuleId.value = null
+  if (!moduleItem) return
+
+  const phase = phaseRows.value.find((row) => row.phase_number === phaseNumber)
+  if (!phase) return
+
+  phase.modules.push(moduleItem)
+}
+
+const onDropToPool = () => {
+  if (!draggedModuleId.value) return
+
+  for (const phase of phaseRows.value) {
+    const index = phase.modules.findIndex((item) => item.id === draggedModuleId.value)
+    if (index !== -1) {
+      phase.modules.splice(index, 1)
+      break
+    }
+  }
+
+  draggedModuleId.value = null
+}
+
+const saveModulePhases = async () => {
+  if (!selectedPhaseFiliere.value) return
+
+  phasesSaving.value = true
+  phasesError.value = null
+  phasesSuccess.value = null
+
+  try {
+    const phasesPayload = phaseRows.value.map((phase) => ({
+      phase_number: phase.phase_number,
+      module_ids: phase.modules.map((moduleItem) => moduleItem.id),
+    }))
+
+    const previousMap: Record<string, number | null> = {}
+    phaseRows.value.forEach((phase) => {
+      phase.modules.forEach((moduleItem) => {
+        previousMap[String(moduleItem.id)] = moduleItem.id_previous_module ?? null
+      })
+    })
+
+    const response = await api.put<{ success?: boolean; data?: ModulePhasesResponse }>(
+      `/filiers/${selectedPhaseFiliere.value.id}/module-phases`,
+      {
+        phases: phasesPayload,
+        previous_module_by_id: previousMap,
+      },
+    )
+
+    const payload = response?.data
+    if (payload) {
+      allFiliereModules.value = Array.isArray(payload.modules) ? payload.modules : []
+      phaseRows.value = normalizePhaseRows(Array.isArray(payload.phases) ? payload.phases : [])
+      if (phaseRows.value.length === 0) {
+        phaseRows.value = [{ phase_number: 1, modules: [] }]
+      }
+    }
+
+    phasesSuccess.value = 'Plan des modules enregistre avec succes.'
+  } catch (err: any) {
+    phasesError.value = err?.data?.message || err?.message || 'Erreur lors de lenregistrement du plan'
+  } finally {
+    phasesSaving.value = false
+  }
 }
 
 const updateFiliere = async () => {
