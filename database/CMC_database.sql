@@ -236,3 +236,24 @@ UNIQUE (date_seance, heure_debut, heure_fin, id_salle);
 ALTER TABLE emploi_du_temps
 ADD CONSTRAINT chk_time_valid
 CHECK (heure_fin > heure_debut);
+
+-- FILIERE MODULE PHASE ORDERING (for prerequisite planning and auto scheduling)
+CREATE TABLE filiere_module_phases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_filiere INT NOT NULL,
+    id_module INT NOT NULL,
+    id_previous_module INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY filiere_module_unique (id_filiere, id_module),
+    FOREIGN KEY (id_filiere) REFERENCES filieres(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    FOREIGN KEY (id_module) REFERENCES modules(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    FOREIGN KEY (id_previous_module) REFERENCES modules(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    INDEX idx_filiere_previous_module (id_filiere, id_previous_module)
+) ENGINE=InnoDB;

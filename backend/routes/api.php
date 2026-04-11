@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EtablissementsController;
 use App\Http\Controllers\EmploiDuTempsController;
 use App\Http\Controllers\FiliersController;
+use App\Http\Controllers\FiliereModulePhasesController;
 use App\Http\Controllers\GroupesController;
 use App\Http\Controllers\LocationsController;
 use App\Http\Controllers\ModuleFormateurController;
@@ -89,6 +90,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('filiers/template', [FiliersController::class, 'downloadTemplate']);
         Route::post('filiers/import', [FiliersController::class, 'importExcel']);
+        Route::get('filiers/{filiereId}/module-phases', [FiliereModulePhasesController::class, 'index'])->whereNumber('filiereId');
+        Route::put('filiers/{filiereId}/module-phases', [FiliereModulePhasesController::class, 'update'])->whereNumber('filiereId');
         Route::post('filiers', [FiliersController::class, 'store']);
         Route::put('filiers/{id}', [FiliersController::class, 'update']);
         Route::patch('filiers/{id}', [FiliersController::class, 'update']);
@@ -122,6 +125,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('module-formateur/{module_formateur}', [ModuleFormateurController::class, 'update']);
         Route::patch('module-formateur/{module_formateur}', [ModuleFormateurController::class, 'update']);
         Route::delete('module-formateur/{module_formateur}', [ModuleFormateurController::class, 'destroy']);
+    });
+
+    Route::middleware('role:CHEF_POLE,DIRECTEUR_EFP')->group(function () {
+        Route::post('emploi-du-temps/generate-weekly-smart', [EmploiDuTempsController::class, 'generateWeeklySmart']);
     });
 
     Route::middleware('role:CHEF_POLE')->group(function () {

@@ -254,19 +254,50 @@
             <p class="text-sm font-semibold text-slate-900">{{ weekLabel }}</p>
             <button @click="goToCurrentWeek" class="mt-0.5 text-xs text-sky-600 hover:underline">Semaine actuelle</button>
           </div>
-          <button
-            @click="nextWeek"
-            class="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Suivante
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div class="flex items-center gap-2">
+            <select v-model="generationTargetType" class="rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-semibold text-slate-700">
+              <option value="formateur">Formateur</option>
+              <option value="groupe">Groupe</option>
+            </select>
+            <select
+              v-if="generationTargetType === 'formateur'"
+              v-model.number="generationFormateurId"
+              class="max-w-[170px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700"
+            >
+              <option v-for="f in formateurOptions" :key="`gen-f-${f.id}`" :value="f.id">{{ f.label }}</option>
+            </select>
+            <select
+              v-else
+              v-model.number="generationGroupeId"
+              class="max-w-[170px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700"
+            >
+              <option v-for="g in groupeOptions" :key="`gen-g-${g.id}`" :value="g.id">{{ g.label }}</option>
+            </select>
+            <button
+              @click="generateSmartWeeklySchedule"
+              class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="generatingSmart || (generationTargetType === 'formateur' ? !generationFormateurId : !generationGroupeId)"
+            >
+              {{ generatingSmart ? 'Generation intelligente...' : 'Generer semaine intelligente' }}
+            </button>
+            <button
+              @click="nextWeek"
+              class="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Suivante
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div v-if="error" class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {{ error }}
+        </div>
+
+        <div v-if="generationMessage" class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {{ generationMessage }}
         </div>
 
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -293,7 +324,7 @@
 
           <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
-              <table class="min-w-full border-separate border-spacing-0">
+              <table class="min-w-full table-fixed border-separate border-spacing-0">
                 <thead>
                   <tr class="bg-slate-100/90">
                     <th class="w-36 border-b border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Jour</th>
@@ -327,14 +358,14 @@
                       >
                         <div v-if="cell.session" class="space-y-1.5">
                           <article
-                            class="rounded-lg border p-2 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
+                            class="flex min-h-[90px] flex-col overflow-hidden rounded-lg border p-2 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
                             :style="getSessionCardStyle(cell.session, conflictSessionIds.has(cell.session.id))"
                           >
                             <div class="mb-0.5 flex items-center justify-between gap-2">
                               <p class="truncate text-[11px] font-semibold text-slate-800">{{ cell.session.module_groupe_formateur.module.nom_module }}</p>
                               <span v-if="conflictSessionIds.has(cell.session.id)" class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">Conflit</span>
                             </div>
-                            <p class="text-[10px] font-medium text-slate-700">{{ cell.session.heure_debut.substring(0, 5) }} - {{ cell.session.heure_fin.substring(0, 5) }}</p>
+                            <p class="whitespace-nowrap text-[10px] font-medium text-slate-700">{{ cell.session.heure_debut.substring(0, 5) }} - {{ cell.session.heure_fin.substring(0, 5) }}</p>
                             <p class="truncate text-[10px] text-slate-600">{{ cell.session.module_groupe_formateur.groupe.nom_groupe }} • {{ getFormateurDisplayName(cell.session) }}</p>
                           </article>
                         </div>
@@ -362,7 +393,7 @@
         <!-- FILTERED VIEW: single session per slot with colspan and drag support -->
         <div v-else-if="viewMode === 'formateur'" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" @mouseleave="endDrag(); cancelMove()">
           <div class="overflow-x-auto">
-            <table class="min-w-full select-none border-separate border-spacing-0">
+            <table class="min-w-full select-none table-fixed border-separate border-spacing-0">
               <thead>
                 <tr class="bg-slate-100">
                   <th class="w-32 border-b border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Jour</th>
@@ -396,22 +427,22 @@
                   >
                     <div
                       v-if="cell.session"
-                      class="rounded-lg border border-slate-200 bg-white p-2.5 text-left shadow-sm"
+                      class="flex min-h-[108px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white p-2.5 text-left shadow-sm"
                       :class="{ 'cursor-move opacity-70': isMovingSession(cell.session) }"
                       @mousedown.prevent.stop="startMove(cell.session, dayIdx, cell.slotIdx ?? 0)"
                     >
-                      <p class="text-xs font-bold text-slate-800">{{ cell.session.module_groupe_formateur.module.nom_module }}</p>
-                      <p class="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      <p class="truncate text-xs font-bold text-slate-800">{{ cell.session.module_groupe_formateur.module.nom_module }}</p>
+                      <p class="mt-1 inline-flex w-fit whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                         {{ cell.session.heure_debut.substring(0, 5) }} - {{ cell.session.heure_fin.substring(0, 5) }}
                       </p>
-                      <p class="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      <p class="mt-1 inline-flex w-fit whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                         {{ getSessionDurationLabel(cell.session) }}
                       </p>
-                      <p class="mt-1.5 text-[11px] font-medium text-slate-700">
+                      <p class="mt-1.5 truncate text-[11px] font-medium text-slate-700">
                         {{ cell.session.module_groupe_formateur.groupe.nom_groupe }}
                       </p>
                       <p v-if="cell.session.salle" class="text-[11px] text-slate-500">{{ cell.session.salle.nom_salle }}</p>
-                      <div class="mt-2 flex items-center justify-end gap-2">
+                      <div class="mt-auto flex items-center justify-end gap-2 pt-2">
                         <button
                           type="button"
                           class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50"
@@ -732,6 +763,8 @@ const isSidebarOpen = ref(false)
 const loading = ref(true)
 const saving = ref(false)
 const error = ref<string | null>(null)
+const generatingSmart = ref(false)
+const generationMessage = ref<string | null>(null)
 
 const rawView = route.query.view as string | undefined
 const initialView: ViewMode = rawView === 'formateur' ? 'formateur' : rawView === 'duo' ? 'duo' : 'general'
@@ -745,6 +778,10 @@ const selectedCompareFormateurIds = ref<number[]>([])
 const multiFormateurSearch = ref('')
 const showMultiFormateurPicker = ref(false)
 const multiFormateurPickerRef = ref<HTMLElement | null>(null)
+
+const generationTargetType = ref<'formateur' | 'groupe'>('formateur')
+const generationFormateurId = ref<number | null>(null)
+const generationGroupeId = ref<number | null>(null)
 
 const allAssignments = ref<Assignment[]>([])
 const allSchedule = ref<Session[]>([])
@@ -855,6 +892,14 @@ const formateurOptions = computed(() => {
       ? `${a.formateur.user.nom} ${a.formateur.user.prenom}`
       : `Formateur #${a.id_formateur}`
     map.set(a.id_formateur, { id: a.id_formateur, label })
+  }
+  return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
+})
+
+const groupeOptions = computed(() => {
+  const map = new Map<number, { id: number; label: string }>()
+  for (const a of allAssignments.value) {
+    map.set(a.id_groupe, { id: a.id_groupe, label: a.groupe?.nom_groupe || `Groupe #${a.id_groupe}` })
   }
   return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
 })
@@ -1733,10 +1778,55 @@ async function loadBaseData() {
     selectedFormateurId.value = formateurOptions.value[0].id
   }
 
+  if (!generationFormateurId.value && formateurOptions.value[0]) {
+    generationFormateurId.value = formateurOptions.value[0].id
+  }
+
+  if (!generationGroupeId.value && groupeOptions.value[0]) {
+    generationGroupeId.value = groupeOptions.value[0].id
+  }
+
   if (selectedCompareFormateurIds.value.length === 0 && formateurOptions.value.length > 0) {
     const first = formateurOptions.value[0]!.id
     const second = formateurOptions.value[1]?.id
     selectedCompareFormateurIds.value = second ? [first, second] : [first]
+  }
+}
+
+async function generateSmartWeeklySchedule() {
+  if (generatingSmart.value) return
+
+  const startDate = formatDateISO(currentWeekStart.value)
+  const targetType = generationTargetType.value
+  const targetId = targetType === 'formateur' ? generationFormateurId.value : generationGroupeId.value
+
+  if (!targetId) {
+    error.value = 'Choisissez une cible valide pour la generation intelligente.'
+    return
+  }
+
+  generatingSmart.value = true
+  generationMessage.value = null
+  error.value = null
+
+  try {
+    const response = await api.post('/emploi-du-temps/generate-weekly-smart', {
+      start_date: startDate,
+      target_type: targetType,
+      target_id: targetId,
+    })
+
+    const generatedCount = Number((response as any)?.generated_count || (response as any)?.data?.generated_count || 0)
+    const skippedPastDays = Number((response as any)?.skipped_past_days || (response as any)?.data?.skipped_past_days || 0)
+    const message = (response as any)?.message || (response as any)?.data?.message || 'Generation intelligente terminee.'
+    generationMessage.value = skippedPastDays > 0
+      ? `${message} (${generatedCount} seance(s) creee(s), ${skippedPastDays} jour(s) passes ignores).`
+      : `${message} (${generatedCount} seance(s) creee(s)).`
+    await loadSchedule()
+  } catch (err: any) {
+    error.value = err?.data?.message || err?.message || 'Erreur lors de la generation intelligente'
+  } finally {
+    generatingSmart.value = false
   }
 }
 
@@ -1808,6 +1898,16 @@ watch(selectedFormateurId, (id) => {
   if (!id) return
   const selected = formateurOptions.value.find((f) => f.id === id)
   if (selected) formateurSearch.value = selected.label
+})
+
+watch(generationTargetType, (type) => {
+  if (type === 'formateur' && !generationFormateurId.value && formateurOptions.value[0]) {
+    generationFormateurId.value = formateurOptions.value[0].id
+  }
+
+  if (type === 'groupe' && !generationGroupeId.value && groupeOptions.value[0]) {
+    generationGroupeId.value = groupeOptions.value[0].id
+  }
 })
 
 watch(modalAssignmentId, (id) => {
