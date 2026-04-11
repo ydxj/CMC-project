@@ -167,6 +167,13 @@
           </div>
           <div class="flex items-center gap-2">
             <button
+              @click="generateSmartWeeklySchedule"
+              class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="generatingSmart || (viewMode === 'formateur' ? selectedFormateurIds.length !== 1 : !selectedGroupeId)"
+            >
+              {{ generatingSmart ? 'Generation intelligente...' : 'Generer semaine intelligente' }}
+            </button>
+            <button
               @click="downloadWeeklyPdf"
               class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="downloadingPdf || (viewMode === 'formateur' ? selectedFormateurIds.length !== 1 : !selectedGroupeId)"
@@ -189,6 +196,10 @@
           {{ error }}
         </div>
 
+        <div v-if="generationMessage" class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {{ generationMessage }}
+        </div>
+
         <div v-if="loading" class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <div class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-sky-600"></div>
           <p class="mt-2 text-slate-600">Chargement...</p>
@@ -209,7 +220,7 @@
 
         <div v-if="!loading" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="overflow-x-auto">
-            <table class="min-w-full select-none border-separate border-spacing-0" @mouseleave="endDrag(); cancelMove()">
+            <table class="min-w-full select-none table-fixed border-separate border-spacing-0" @mouseleave="endDrag(); cancelMove()">
               <thead>
                 <tr class="bg-slate-100">
                   <th class="w-32 border-b border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Jour</th>
@@ -570,7 +581,9 @@ const isSidebarOpen = ref(false)
 const loading = ref(true)
 const saving = ref(false)
 const downloadingPdf = ref(false)
+const generatingSmart = ref(false)
 const error = ref<string | null>(null)
+const generationMessage = ref<string | null>(null)
 
 const viewMode = ref<ViewMode>(route.query.view === 'groupe' ? 'groupe' : 'formateur')
 const selectedFormateurIds = ref<number[]>([])
@@ -1487,6 +1500,59 @@ async function downloadWeeklyPdf() {
     error.value = err?.message || 'Erreur lors du telechargement du PDF'
   } finally {
     downloadingPdf.value = false
+  }
+}
+
+async function generateSmartWeeklySchedule() {
+  if (generatingSmart.value) return
+
+  const startDate = formatDateISO(currentWeekStart.value)
+  let targetType: 'formateur' | 'groupe'
+  let targetId: number | null = null
+
+  if (viewMode.value === 'formateur') {
+    if (selectedFormateurIds.value.length !== 1) {
+      error.value = 'Choisissez un seul formateur pour la generation intelligente.'
+      return
+    }
+    targetType = 'formateur'
+    targetId = selectedFormateurIds.value[0] || null
+  } else {
+    if (!selectedGroupeId.value) {
+      error.value = 'Choisissez un groupe pour la generation intelligente.'
+      return
+    }
+    targetType = 'groupe'
+    targetId = selectedGroupeId.value
+  }
+
+  if (!targetId) {
+    error.value = 'Selection invalide pour la generation intelligente.'
+    return
+  }
+
+  generatingSmart.value = true
+  error.value = null
+  generationMessage.value = null
+
+  try {
+    const response = await api.post('/emploi-du-temps/generate-weekly-smart', {
+      start_date: startDate,
+      target_type: targetType,
+      target_id: targetId,
+    })
+
+    const generatedCount = Number((response as any)?.generated_count || (response as any)?.data?.generated_count || 0)
+    const skippedPastDays = Number((response as any)?.skipped_past_days || (response as any)?.data?.skipped_past_days || 0)
+    const message = (response as any)?.message || (response as any)?.data?.message || 'Generation intelligente terminee.'
+    generationMessage.value = skippedPastDays > 0
+      ? `${message} (${generatedCount} seance(s) creee(s), ${skippedPastDays} jour(s) passes ignores).`
+      : `${message} (${generatedCount} seance(s) creee(s)).`
+    await loadSchedule()
+  } catch (err: any) {
+    error.value = err?.data?.message || err?.message || 'Erreur lors de la generation intelligente'
+  } finally {
+    generatingSmart.value = false
   }
 }
 
